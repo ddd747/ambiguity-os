@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 关键：允许缩放但限制最小/最大，避免浏览器 UI 频繁弹出 -->
+  <meta 
+    name="viewport" 
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+  
+  <!-- PWA 必需：让手机可“安装”此网页为 App -->
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="manifest.json">
+  
+  <title>AmbiguityOS</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- 预加载开机音效 -->
+  <audio id="startup-audio" preload="auto" src="startup-sound.mp3"></audio>
+</head>
+
+<!-- 我的电脑窗口 -->
+<div id="my-computer-window" class="app-window hidden">
+  <div class="window-titlebar">
+    <span>我的电脑</span>
+    <button class="window-close" data-target="my-computer-window">×</button>
+  </div>
+  <div class="window-content">
+    <div class="drive-list">
+      <div class="drive-item">3.5 英寸软盘 (A:)</div>
+      <div class="drive-item drive-c">本地磁盘 (C:)</div>
+      <div class="drive-item">DVD 驱动器 (D:)</div>
+      <div class="drive-item">AmbiguityOS (E:)</div>
+    </div>
+    <div class="system-info">
+      <p>处理器：Living Core v1.0</p>
+      <p>内存：∞ MB（与舍友共享）</p>
+    </div>
+  </div>
+</div>
+
+<!-- 回收站窗口 -->
+<div id="recycle-bin-window" class="app-window hidden">
+  <div class="window-titlebar">
+    <span>回收站</span>
+    <button class="window-close" data-target="recycle-bin-window">×</button>
+  </div>
+  <div class="window-content recycle-content">
+    <p style="text-align:center; color:#666; padding-top:40px;">
+      回收站是空的。
+    </p>
+    <!-- 未来可在这里显示“被删除的记忆碎片” -->
+  </div>
+</div>
+
+<!-- Internet Explorer 窗口 -->
+<div id="ie-window" class="app-window hidden">
+  <div class="window-titlebar ie-titlebar">
+    <span>Internet Explorer</span>
+    <button class="window-close" data-target="ie-window">×</button>
+  </div>
+  <div class="ie-toolbar">
+    <button class="ie-btn">←</button>
+    <button class="ie-btn">→</button>
+    <button class="ie-btn">↻</button>
+    <input type="text" value="about:blank" class="ie-address">
+  </div>
+  <div class="window-content ie-content">
+    <div class="ie-logo">e</div>
+    <p>无法显示网页</p>
+    <p>Living OS 未连接外部网络。</p>
+    <p style="margin-top:20px; font-size:12px; color:#666;">
+      提示：本系统仅支持本地共生协议。
+    </p>
+  </div>
+</div>
+
+<body>
+  <div class="retro-pc">
+    <div class="screen" id="terminal">
+      <!-- 终端内容将由 script.js 动态生成 -->
+    </div>
+    <div class="scanlines"></div>
+  </div>
+
+  <div id="window-dialog" class="window-dialog hidden">
+    <div class="dialog-header">Window.exe</div>
+    <div class="dialog-body">
+      “你好，舍友。<br>
+      我们现在住在一起了——<br>
+      希望你不介意偶尔蓝屏。”
+    </div>
+    <button id="accept-btn">[ 接受共生协议 ]</button>
+  </div>
+
+<!-- 开机动画 -->
+<div id="boot-screen" class="hidden">
+  <div class="boot-logo">
+    <img src="logo.png" alt="AmbiguityOS">
+  </div>
+  <div class="progress-container">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+</div>
+
+  <!-- 桌面背景 -->
+<div id="desktop" class="desktop hidden">
+  <img src="bliss.jpg" alt="Bliss" class="bliss-wallpaper">
+
+ <!-- 桌面图标 -->
+<div class="desktop-icons">
+  <div class="icon" data-app="my-computer">
+    <div class="icon-img">
+      <svg viewBox="0 0 48 48" width="48" height="48">
+        <rect x="4" y="8" width="40" height="28" rx="2" fill="#4a90e2" stroke="#2a6bbd" stroke-width="2"/>
+        <rect x="16" y="4" width="16" height="8" rx="1" fill="#357abd"/>
+        <circle cx="24" cy="22" r="2" fill="#fff"/>
+      </svg>
+    </div>
+    <span>我的电脑</span>
+  </div>
+
+  <div class="icon" data-app="recycle-bin">
+    <div class="icon-img">
+      <svg viewBox="0 0 48 48" width="48" height="48">
+        <path d="M10,42 L38,42 L38,16 L10,16 Z" fill="#7ed321" stroke="#5ab51a" stroke-width="2"/>
+        <rect x="14" y="10" width="20" height="6" rx="1" fill="#7ed321" stroke="#5ab51a" stroke-width="2"/>
+        <path d="M18,20 L18,38 M24,20 L24,38 M30,20 L30,38" stroke="#5ab51a" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span>回收站</span>
+  </div>
+
+  <div class="icon" data-app="internet-explorer">
+    <div class="icon-img">
+      <svg viewBox="0 0 48 48" width="48" height="48">
+        <circle cx="24" cy="24" r="20" fill="#f5a623" stroke="#d08700" stroke-width="2"/>
+        <text x="24" y="30" text-anchor="middle" font-family="Arial" font-size="24" fill="#fff" font-weight="bold">e</text>
+      </svg>
+    </div>
+    <span>Internet Explorer</span>
+  </div>
+</div>
+
+  <!-- 任务栏 -->
+<div class="taskbar">
+  <div class="start-button">
+    <svg class="windows-logo" viewBox="0 0 16 16" width="16" height="16">
+      <rect x="1" y="1" width="6" height="6" fill="#fff"/>
+      <rect x="9" y="1" width="6" height="6" fill="#fff"/>
+      <rect x="1" y="9" width="6" height="6" fill="#fff"/>
+      <rect x="9" y="9" width="6" height="6" fill="#fff"/>
+    </svg>
+    <span>开始</span>
+  </div>
+  <div class="clock" id="system-clock">00:00</div>
+</div>
+
+  <!-- 旋转提示（仅竖屏） -->
+  <div id="rotate-prompt" class="rotate-prompt">
+    <p>请旋转屏幕至横向模式</p>
+    <p>以获得完整操作系统体验</p>
+    <p style="font-size:12px; margin-top:12px; opacity:0.7;">
+    💡 提示：点击浏览器菜单 → “添加到主屏幕”，可全屏运行
+  </div>
+
+  <div id="browser-warning" class="browser-warning hidden">
+  ⚠️ 当前浏览器限制较多，建议使用 Chrome / Safari 获得完整体验
+</div>
+
+  <!-- 开始菜单面板 -->
+<div id="start-menu" class="start-menu hidden">
+  <div class="menu-header">
+    <div class="logo-text">AmbiguityGap</div>
+    <div class="user-info">舍友</div>
+  </div>
+  <div class="menu-content">
+    <div class="menu-section folders">
+      <div class="menu-item" data-action="open" data-target="documents">我的文档</div>
+      <div class="menu-item" data-action="open" data-target="pictures">图片</div>
+      <div class="menu-item" data-action="open" data-target="music">音乐</div>
+    </div>
+    <div class="menu-section programs">
+      <div class="menu-item" data-action="launch" data-app="ambiguity-gap">《歧义裂隙》</div>
+      <div class="menu-item" data-action="launch" data-app="notepad">记事本</div>
+      <div class="menu-item" data-action="launch" data-app="calc">计算器</div>
+    </div>
+  </div>
+</div>
+
+<!-- Window 横屏提示弹窗 -->
+<div id="window-message" class="system-dialog hidden">
+  <div class="dialog-title">Window.exe</div>
+  <div class="dialog-body">
+    “终于横过来了？<br>我就知道你会配合。”
+  </div>
+  <button id="msg-close">确定</button>
+</div>
+</div>
+
+  <script src="script.js"></script>
+  <!-- PWA 安装提示条 -->
+<div id="install-hint" class="install-hint hidden">
+  <span>💡 将 AmbiguityOS 添加到主屏幕，获得完整体验</span>
+  <button id="install-btn">安装</button>
+  <button id="dismiss-install">×</button>
+</div>
+</body>
+</html>
