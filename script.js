@@ -67,24 +67,17 @@ document.addEventListener('DOMContentLoaded', () => {
     windowDialog.classList.remove('hidden');
   }
 
-  // ========== 接受共生协议 ==========
-  acceptBtn.addEventListener('click', () => {
-      // ▼▼▼ 关键：预激活音频上下文 ▼▼▼
-  const audio = document.getElementById('startup-audio');
-  if (audio) {
-    // 尝试播放一个极短静音片段（或重置状态）
-    audio.volume = 0.7;
-    // 创建 Web Audio Context（更可靠）
-    if (typeof window.AudioContext !== 'undefined') {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      // 不需要实际播放，只需创建上下文即可解锁自动播放
-      // 或者：播放一个 0.1 秒静音
-    }
-    // 同时尝试播放（即使失败也无妨）
-    audio.play().catch(() => {
-      // 静默失败，后续动画结束时再试一次
-    });
+// ========== 接受共生协议 ==========
+acceptBtn.addEventListener('click', () => {
+  // ▼▼▼ 播放“推开门”音效 ▼▼▼
+  const doorAudio = document.getElementById('door-audio');
+  if (doorAudio) {
+    // 重置并播放（防止多次点击）
+    doorAudio.currentTime = 0;
+    doorAudio.volume = 0.6;
+    doorAudio.play().catch(e => console.warn("Door sound not played:", e));
   }
+
   // 隐藏终端和协议窗口
   document.querySelector('.retro-pc').classList.add('hidden');
   windowDialog.classList.add('hidden');
@@ -95,87 +88,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const progressFill = document.getElementById('progress-fill');
   const logoImg = document.querySelector('.boot-logo img');
-
   let progress = 0;
-  const maxProgress = 85; // 先加载到 85%
-  const interval = 30; // 初始间隔（ms）
+  const maxProgress = 85;
 
-  // 递增函数：越接近 85%，速度越慢
   function loadTo85() {
     if (progress >= maxProgress) {
-      // 到达 85%，暂停 4 秒
       setTimeout(() => {
-        // 让 logo 移动到进度条 85% 的位置
         const container = document.querySelector('.progress-container');
         const containerRect = container.getBoundingClientRect();
         const logoRect = logoImg.getBoundingClientRect();
-
-        // 计算 85% 位置的绝对坐标（相对于视口）
         const targetX = containerRect.left + containerRect.width * 0.85 - logoRect.width / 2;
-
-        // 当前 logo 中心 X
         const currentLogoCenter = logoRect.left + logoRect.width / 2;
         const distance = targetX - currentLogoCenter;
-
-        // 应用 transform（相对当前位置移动）
         logoImg.style.transform = `translateX(${distance}px)`;
 
-        // 同时补完最后 15%
         let finalProgress = 85;
         const finalInterval = setInterval(() => {
           finalProgress += 1;
           progressFill.style.width = `${finalProgress}%`;
           if (finalProgress >= 100) {
             clearInterval(finalInterval);
-            // 动画结束后显示桌面
             setTimeout(() => {
               bootScreen.classList.add('hidden');
               document.getElementById('desktop').classList.remove('hidden');
-              
-                // ▼▼▼ 新增：播放开机音效 ▼▼▼
-               const audio = document.getElementById('startup-audio');
-               if (audio) {
-                // 尝试播放（需用户交互后才能自动播放）
-                audio.currentTime = 0; // 重置
-                audio.volume = 0.7;    // 避免过响
-                // 某些浏览器要求 play() 在用户手势后才能生效（我们已在 acceptBtn 点击后，所以安全）
-                audio.play().catch(e => {
-                console.warn("开机音效未播放:", e);
-                // 可选：静默失败，不影响体验
-                });
-              }
-              // ▲▲▲ 新增结束 ▲▲▲
 
-              // 初始化系统
+              // ▼▼▼ 播放“开机启动”音效 ▼▼▼
+              const startupAudio = document.getElementById('startup-audio');
+              if (startupAudio) {
+                startupAudio.currentTime = 0;
+                startupAudio.volume = 0.7;
+                startupAudio.play().catch(e => console.warn("Startup sound not played:", e));
+              }
+
               initSystemClock();
               initDesktopIcons();
               initStartMenu();
 
-              // 横屏提示
               if (window.matchMedia("(orientation: landscape)").matches) {
                 setTimeout(() => {
                   document.getElementById('window-message').classList.remove('hidden');
                 }, 3000);
               }
-            }, 300); // 微停顿，让 100% 状态可见
+            }, 300);
           }
-        }, 40); // 最后 15% 用固定速度（约 600ms）
-      }, 4000); // 在 85% 处等待 4 秒
+        }, 40);
+      }, 4000);
       return;
     }
-
-    // 递增进度（非线性减速）
     progress += 1;
     progressFill.style.width = `${progress}%`;
-
-    // 动态延长间隔：越接近 85%，越慢
-    const slowdownFactor = 1 + (progress / maxProgress) * 2; // 从 1x 到 3x 慢
-    const nextDelay = interval * slowdownFactor;
-
-    setTimeout(loadTo85, nextDelay);
+    const slowdownFactor = 1 + (progress / maxProgress) * 2;
+    setTimeout(loadTo85, 30);
   }
 
-  // 开始加载
   loadTo85();
 });
 
