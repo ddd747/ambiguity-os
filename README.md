@@ -47,7 +47,6 @@
 - 桌面壁纸：经典 Windows “Bliss” 山景
 - 音效：原创或 CC0 资源
 - Window 角色灵感：来自对“AI拟人化”与“数字生命”的探索
-- 躯体模型：基于[https://www.aplaybox.com/details/model/53AdIN3bwhqV](https://www.aplaybox.com/details/model/53AdIN3bwhqV)修改
 
 ## ⚠️ 注意
 
