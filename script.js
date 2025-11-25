@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     windowDialog.classList.remove('hidden');
   }
 
-// ========== 接受共生协议 ==========
+// ========== 接受协议 ==========
 acceptBtn.addEventListener('click', () => {
   // ▼▼▼ 播放“推开门”音效 ▼▼▼
   const doorAudio = document.getElementById('door-audio');
@@ -85,19 +85,26 @@ acceptBtn.addEventListener('click', () => {
   // 显示开机动画
   const bootScreen = document.getElementById('boot-screen');
   bootScreen.classList.remove('hidden');
+  // 显示 Window 舍友
+  if (typeof window.showWindowAgent === 'function') {
+    window.showWindowAgent();
+  }
 
   const progressFill = document.getElementById('progress-fill');
   const logoImg = document.querySelector('.boot-logo img');
+  
+  // ✅ 将 progress 定义在外部作用域
   let progress = 0;
   const maxProgress = 85;
 
   function loadTo85() {
     if (progress >= maxProgress) {
+      // ===== 到达 85% 后的动画 =====
       setTimeout(() => {
         const container = document.querySelector('.progress-container');
         const containerRect = container.getBoundingClientRect();
         const logoRect = logoImg.getBoundingClientRect();
-        const targetX = containerRect.left + containerRect.width * 0.85 - logoRect.width / 2;
+        const targetX = containerRect.left + containerRect.width * 0.85 - logoImg.offsetWidth / 2;
         const currentLogoCenter = logoRect.left + logoRect.width / 2;
         const distance = targetX - currentLogoCenter;
         logoImg.style.transform = `translateX(${distance}px)`;
@@ -112,7 +119,12 @@ acceptBtn.addEventListener('click', () => {
               bootScreen.classList.add('hidden');
               document.getElementById('desktop').classList.remove('hidden');
 
-              // ▼▼▼ 播放“开机启动”音效 ▼▼▼
+              // 显示 Window 舍友
+              if (typeof window.showWindowAgent === 'function') {
+                window.showWindowAgent();
+              }
+
+              // 播放开机音效
               const startupAudio = document.getElementById('startup-audio');
               if (startupAudio) {
                 startupAudio.currentTime = 0;
@@ -120,28 +132,34 @@ acceptBtn.addEventListener('click', () => {
                 startupAudio.play().catch(e => console.warn("Startup sound not played:", e));
               }
 
+              // 初始化系统
               initSystemClock();
               initDesktopIcons();
               initStartMenu();
 
+              // 横屏提示
               if (window.matchMedia("(orientation: landscape)").matches) {
                 setTimeout(() => {
-                  document.getElementById('window-message').classList.remove('hidden');
+                  document.getElementById('window-message')?.classList.remove('hidden');
                 }, 3000);
               }
             }, 300);
           }
         }, 40);
       }, 4000);
+      console.log("Boot progress:", progress);
       return;
     }
+
     progress += 1;
     progressFill.style.width = `${progress}%`;
-    const slowdownFactor = 1 + (progress / maxProgress) * 2;
-    setTimeout(loadTo85, 30);
+
+    // ✅ 使用 slowdownFactor 控制速度（可选）
+    const delay = 30 + (progress / maxProgress) * 50; // 越往后越慢
+    setTimeout(loadTo85, delay);
   }
 
-  loadTo85();
+  loadTo85(); // 启动加载
 });
 
   // ========== 系统时间 ==========
@@ -249,6 +267,27 @@ function initDesktopIcons() {
 
   // ========== 启动终端动画 ==========
   typeNextLine();
+
+// 发送消息
+document.getElementById('send-chat')?.addEventListener('click', () => {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (msg) {
+    alert(`Window 收到: "${msg}"`);
+    input.value = '';
+  }
+});
+
+// 启动裂隙
+document.getElementById('launch-gap')?.addEventListener('click', () => {
+  alert("《歧义裂隙》尚未完全加载……\nLiving OS 正在后台编译你的命运。");
+});
+
+// 关闭聊天窗口 + Window 回 idle
+document.getElementById('close-chat')?.addEventListener('click', () => {
+  document.getElementById('roommate-chat').classList.add('hidden');
+  setWindowState('idle');
+});
 });
 
 function showInstallHint() {
@@ -289,3 +328,213 @@ function checkBrowserSupport() {
 
 // 在 DOMContentLoaded 中调用
 checkBrowserSupport();
+
+// ========== Window 实体 - 可拖动舍友 ==========
+(function() {
+  let isDragging = false;
+  let offsetX, offsetY;
+
+  function initWindowAgent() {
+    const agent = document.getElementById('window-agent');
+    if (!agent) return;
+
+    agent.classList.remove('hidden');
+    setWindowState('idle');
+
+    // 设置默认位置：右下角床位
+    function setDefaultPosition() {
+      const x = window.innerWidth - 120;   // 距离右边 120px
+      const y = window.innerHeight * 0.82; // 床位高度
+      agent.style.left = x + 'px';
+      agent.style.top = y + 'px';
+    }
+
+    setDefaultPosition();
+    // 点击 Window 显示气泡
+  agent.addEventListener('click', (e) => {
+  if (agent.classList.contains('away')) return;
+
+  const bubble = document.getElementById('window-bubble');
+  if (!bubble) return;
+
+  // 计算气泡位置（在 Window 左上方）
+  const agentRect = agent.getBoundingClientRect();
+  const bubbleX = agentRect.left - 150; // 左侧偏移
+  const bubbleY = agentRect.top - 80;   // 上方偏移
+
+  // 边界保护：不能超出屏幕
+  const finalX = Math.max(10, Math.min(bubbleX, window.innerWidth - 160));
+  const finalY = Math.max(10, Math.min(bubbleY, window.innerHeight - 120));
+
+  bubble.style.left = finalX + 'px';
+  bubble.style.top = finalY + 'px';
+  bubble.classList.remove('hidden');
+
+  // 阻止冒泡
+  e.stopPropagation();
+  });
+
+    // 拖动开始
+    agent.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      const rect = agent.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      agent.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    // 拖动中
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      // 限制范围：不能拖到屏幕外 or 天花板
+      const minX = 0;
+      const maxX = window.innerWidth - agent.offsetWidth;
+      const minY = window.innerHeight * 0.3; // 地面（30%）
+      const maxY = window.innerHeight * 0.9; // 天花板（90%）
+
+      let x = e.clientX - offsetX;
+      let y = e.clientY - offsetY;
+
+      x = Math.max(minX, Math.min(x, maxX));
+      y = Math.max(minY, Math.min(y, maxY));
+
+      agent.style.left = x + 'px';
+      agent.style.top = y + 'px';
+    });
+
+    // 拖动结束
+    const stopDrag = () => {
+      if (isDragging) {
+        isDragging = false;
+        agent.style.cursor = 'grab';
+      }
+    };
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('mouseleave', stopDrag);
+
+    // 窗口缩放时重置床位（可选）
+    window.addEventListener('resize', setDefaultPosition);
+  }
+
+  function setWindowState(state) {
+  const agent = document.getElementById('window-agent');
+  if (!agent) return;
+  
+  // 清除状态类
+  agent.className = 'window-agent';
+
+  const face = agent.querySelector('.window-face');
+  if (!face) return;
+
+  if (state === 'walking') {
+    agent.classList.add('walking');
+    // 表情保持 idle（闭眼）
+    face.innerHTML = `
+      <path d="M6 12 L10 12 M14 12 L18 12" stroke="#333" stroke-width="2"/>
+      <path d="M9 16 Q12 17 15 16" fill="none" stroke="#333" stroke-width="1.5"/>
+    `;
+  } else if (state === 'talking') {
+    agent.classList.add('talking');
+    face.innerHTML = `
+      <circle cx="9" cy="10" r="2" fill="#333"/>
+      <circle cx="15" cy="10" r="2" fill="#333"/>
+      <path d="M9 16 Q12 18 15 16" fill="none" stroke="#333" stroke-width="1.5"/>
+    `;
+  } else if (state === 'away') {
+    agent.classList.add('away');
+  } else {
+    agent.classList.add('idle');
+    face.innerHTML = `
+      <path d="M6 12 L10 12 M14 12 L18 12" stroke="#333" stroke-width="2"/>
+      <path d="M9 16 Q12 17 15 16" fill="none" stroke="#333" stroke-width="1.5"/>
+    `;
+  }
+}
+
+  // 随机离开
+  function scheduleRandomAway() {
+    if (Math.random() > 0.6) {
+      setWindowState('away');
+      setTimeout(() => {
+        if (document.getElementById('window-agent')?.classList.contains('away')) {
+          setWindowState('idle');
+        }
+      }, 30000);
+    }
+  }
+
+  // 对外接口
+  window.showWindowAgent = function() {
+    initWindowAgent();
+    setTimeout(scheduleRandomAway, 5000);
+  };
+})();
+
+// 点击外部关闭气泡
+document.addEventListener('click', (e) => {
+  const bubble = document.getElementById('window-bubble');
+  if (bubble && !bubble.classList.contains('hidden') && !bubble.contains(e.target)) {
+    bubble.classList.add('hidden');
+  }
+});
+
+// 气泡选项处理器
+document.querySelectorAll('#window-bubble .bubble-options li').forEach(li => {
+  li.addEventListener('click', () => {
+    const action = li.getAttribute('data-action');
+    if (action === 'chat') {
+      document.getElementById('roommate-chat').classList.remove('hidden');
+        if (chatWin) {
+          chatWin.classList.remove('hidden');
+          setWindowState('talking');
+        } else {
+          console.error("❌ 聊天窗口 #roommate-chat 未找到！");
+        }
+    } else if (action === 'move-to-window') {
+      moveToWindowSide();
+    }
+    // 关闭气泡
+    document.getElementById('window-bubble').classList.add('hidden');
+  });
+});
+
+function moveToWindowSide() {
+  const agent = document.getElementById('window-agent');
+  if (!agent) return;
+
+  // 开始行走动画
+  setWindowState('walking'); // 新增 walking 状态
+
+  const startX = parseFloat(agent.style.left) || 0;
+  const startY = parseFloat(agent.style.top) || 0;
+  const targetX = window.innerWidth - 120;
+  const targetY = window.innerHeight * 0.82;
+
+  const duration = 1200; // 1.2秒
+  const startTime = performance.now();
+
+  function animate(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // 缓动函数（ease-out）
+    const easeProgress = 1 - Math.pow(1 - progress, 2);
+
+    const x = startX + (targetX - startX) * easeProgress;
+    const y = startY + (targetY - startY) * easeProgress;
+
+    agent.style.left = x + 'px';
+    agent.style.top = y + 'px';
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // 到达后停止行走
+      setWindowState('idle');
+    }
+  }
+
+  requestAnimationFrame(animate);
+}

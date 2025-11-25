@@ -618,3 +618,191 @@ html, body {
   font-size: 12px;
   z-index: 1000;
 }
+
+/* === Window 实体 - Like2D 坐姿舍友 === */
+.window-agent {
+  position: fixed; /* ← 必须是 fixed */
+  z-index: 900;
+  cursor: grab;
+  transition: transform 0.2s, opacity 0.3s;
+}
+
+/* 身体：坐姿，带肩膀和手臂暗示 */
+.window-body {
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  width: 44px;
+  height: 56px;
+  background: #e0e0e0;
+  border-radius: 8px 8px 6px 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  /* 添加微妙渐变，模拟光影 */
+  background: linear-gradient(to bottom, #f0f0f0, #d0d0d0);
+}
+
+/* 头部：稍大，更自然 */
+.window-head {
+  position: absolute;
+  top: -28px; /* 头在身体上方 */
+  left: 16px;
+  width: 28px;
+  height: 28px;
+  background: #e0e0e0;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  background: linear-gradient(to bottom, #f5f5f5, #d8d8d8);
+}
+
+/* 表情 */
+.window-face {
+  pointer-events: none;
+}
+
+/* 离开状态 */
+.window-agent.away {
+  opacity: 0.4;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+/* 悬停效果 */
+.window-agent:not(.away):hover {
+  transform: scale(1.08);
+}
+.window-agent:not(.away):hover .window-body,
+.window-agent:not(.away):hover .window-head {
+  background: linear-gradient(to bottom, #ffffff, #e0e0e0);
+}
+
+/* === Talking 气泡 === */
+.window-bubble {
+  position: fixed;
+  background: rgba(20, 20, 30, 0.92);
+  border: 1px solid #4cc9f0;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  color: #e0e0ff;
+  box-shadow: 0 4px 12px rgba(76, 201, 240, 0.25);
+  z-index: 1000;
+  min-width: 140px;
+  pointer-events: auto;
+}
+
+.bubble-header {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #4cc9f0;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+
+.bubble-options {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bubble-options li {
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.bubble-options li:hover {
+  color: white;
+  text-shadow: 0 0 4px #4cc9f0;
+}
+
+/* 隐藏状态 */
+.hidden {
+  display: none !important;
+}
+
+/* === 行走状态 === */
+.window-agent.walking {
+  animation: walk-cycle 0.8s infinite ease-in-out;
+}
+
+@keyframes walk-cycle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px); /* 轻微上下浮动，模拟步伐 */
+  }
+}
+
+/* 上身 */
+.window-torso {
+  position: absolute;
+  bottom: 20px; /* 给腿留空间 */
+  left: 12px;
+  width: 36px;
+  height: 40px;
+  background: linear-gradient(to bottom, #f0f0f0, #d0d0d0);
+  border-radius: 6px 6px 4px 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 腿部容器 */
+.window-legs {
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  width: 28px;
+  height: 20px;
+}
+
+.leg {
+  position: absolute;
+  width: 6px;
+  height: 16px;
+  background: #c0c0c0;
+  border-radius: 2px;
+  bottom: 0;
+}
+
+.leg.left {
+  left: 0;
+  animation: leg-swing-left 0.8s infinite ease-in-out;
+}
+
+.leg.right {
+  right: 0;
+  animation: leg-swing-right 0.8s infinite ease-in-out;
+}
+
+@keyframes leg-swing-left {
+  0%, 100% { transform: rotate(5deg); }
+  50% { transform: rotate(-8deg); }
+}
+
+@keyframes leg-swing-right {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(8deg); }
+}
+
+/* 静坐时隐藏腿？不，我们让她一直有腿，但 idle 时不动画 */
+.window-agent:not(.walking) .leg {
+  animation: none;
+  transform: rotate(0);
+}
+
+/* 聊天窗口输入框 */
+#chat-input {
+  border: 1px solid #808080;
+  border-radius: 3px;
+  background: #fff;
+  color: #000;
+}
+
+#chat-input:focus {
+  outline: 1px solid #0078d7;
+}

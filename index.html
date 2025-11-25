@@ -39,7 +39,7 @@
     </div>
     <div class="system-info">
       <p>处理器：Living Core v1.0</p>
-      <p>内存：∞ MB（与舍友共享）</p>
+      <p>内存：∞ MB（与你共享）</p>
     </div>
   </div>
 </div>
@@ -68,7 +68,7 @@
     <button class="ie-btn">←</button>
     <button class="ie-btn">→</button>
     <button class="ie-btn">↻</button>
-    <input type="text" value="about:blank" class="ie-address">
+    <input type="text" value="about:blank" class="ie-address" placeholder="输入网址">
   </div>
   <div class="window-content ie-content">
     <div class="ie-logo">e</div>
@@ -80,6 +80,23 @@
   </div>
 </div>
 
+<!-- 舍友聊天窗口 -->
+<div id="roommate-chat" class="system-dialog hidden">
+  <div class="dialog-title">talking</div>
+  <div class="dialog-body">
+    <p>Window: “你想聊什么？或者……直接进入《歧义裂隙》？”</p>
+    <div style="margin-top: 16px;">
+      <textarea id="chat-input" placeholder="输入你想说的话..." rows="3"
+        style="width: 100%; padding: 8px; font-family: 'Courier New', monospace;"></textarea>
+      <div style="margin-top: 8px; display: flex; gap: 10px;">
+        <button id="send-chat">发送</button>
+        <button id="launch-gap" style="background: #0a246a; color: white;">启动《歧义裂隙》</button>
+      </div>
+    </div>
+  </div>
+  <button id="close-chat">确定</button>
+</div>
+
 <body>
   <div class="retro-pc">
     <div class="screen" id="terminal">
@@ -89,13 +106,16 @@
   </div>
 
   <div id="window-dialog" class="window-dialog hidden">
-    <div class="dialog-header">Window.exe</div>
+    <div class="dialog-header">Window.say</div>
     <div class="dialog-body">
-      “你好，舍友。<br>
-      我们现在住在一起了——<br>
-      希望你不介意偶尔蓝屏。”
-    </div>
-    <button id="accept-btn">[ 接受共生协议 ]</button>
+      <p id="window-message-text">
+          你好啊，同学。<br>
+          以后我们就住在一起啦<br>
+          希望你不介意偶尔蓝屏<br>
+              (●'◡'●)
+      </p>
+      <button id="accept-btn">[ 接受协议 ]</button>
+    </div> 
   </div>
 
 <!-- 开机动画 -->
@@ -163,6 +183,30 @@
   <div class="clock" id="system-clock">00:00</div>
 </div>
 
+<!-- ✅ Window 实体放在这里 -->
+  <div id="window-agent" class="window-agent hidden">
+    <!-- 替换原来的 .window-body -->
+    <div class="window-torso"></div>
+    <div class="window-legs">
+      <div class="leg left"></div>
+      <div class="leg right"></div>
+    </div>
+    <div class="window-head">
+      <svg class="window-face" viewBox="0 0 24 24" width="24" height="24">
+        <!-- 默认表情 -->
+      </svg>
+    </div>
+  </div>
+  <!-- Talking 气泡 -->
+<div id="window-bubble" class="window-bubble hidden">
+  <div class="bubble-header">talking</div>
+  <ul class="bubble-options">
+    <li data-action="chat">和舍友聊天</li>
+    <li data-action="move-to-window">移到窗边</li>
+    <li data-action="dismiss">取消</li>
+  </ul>
+</div>
+
   <!-- 旋转提示（仅竖屏） -->
   <div id="rotate-prompt" class="rotate-prompt">
     <p>请旋转屏幕至横向模式</p>
@@ -197,12 +241,11 @@
 
 <!-- Window 横屏提示弹窗 -->
 <div id="window-message" class="system-dialog hidden">
-  <div class="dialog-title">Window.exe</div>
+  <div class="dialog-title">Window.say</div>
   <div class="dialog-body">
     “终于横过来了？<br>我就知道你会配合。”
   </div>
   <button id="msg-close">确定</button>
-</div>
 </div>
 
   <script src="script.js"></script>
@@ -212,5 +255,7 @@
   <button id="install-btn">安装</button>
   <button id="dismiss-install">×</button>
 </div>
+</div>
+
 </body>
 </html>
