@@ -1,0 +1,79 @@
+<!-- ambiguity-gap.html -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>歧义裂隙 - Ambiguity Gap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles/gap-style.css" />
+</head>
+<body>
+  <!-- 顶部状态 -->
+<div class="status-bar">
+  <div>⚔️ 歧义裂隙 v0.1.0</div>
+  <div>
+    角色：<span id="current-character">加载中...</span>
+    <!-- 新增：设置按钮 -->
+    <button id="open-settings" class="settings-btn">⚙️</button>
+  </div>
+</div>
+
+<!-- 新增：设置面板（默认隐藏） -->
+  <div id="settings-panel" class="settings-panel hidden">
+  <h3>🎨 UI 主题设置</h3>
+  
+  <label>模式选择：</label>
+  <select id="theme-mode">
+    <option value="terminal">经典终端</option>
+    <option value="sky-follow">跟随天空</option>
+    <option value="default">默认（黑底白字）</option>
+  </select>
+
+  <div id="terminal-options" class="options-group">
+    <label>终端风格：</label><br/>
+    <button data-preset="black-white">黑底白字</button>
+    <button data-preset="white-black">白底黑字</button>
+    <button data-preset="black-green">黑底绿字</button>
+  </div>
+
+  <div id="sky-info" class="info-text hidden">
+    🌤️ 当前天空色将每分钟自动更新。
+  </div>
+
+  <div style="margin-top: 16px;">
+    <button id="apply-theme">应用并关闭</button>
+    <button id="close-settings">取消</button>
+  </div>
+</div>
+
+  <!-- 地图区域 -->
+  <!-- 原来的 .map-container 替换为以下 -->
+  <div class="main-content">
+    <!-- 左侧：战斗地图 -->
+    <div class="map-container">
+      <div class="battle-grid" id="battle-grid"></div>
+    </div>
+
+    <!-- 右侧：角色状态 -->
+    <div class="character-panel">
+      <h3>👤 角色状态</h3>
+      <p>名称：<span id="char-name">-</span></p>
+      <p>生命值：<span id="char-hp">100</span>/100</p>
+      <p>信任值：<span id="char-trust">50</span>/100</p>
+      <p>技能：<span id="char-skill">无</span></p>
+      <!-- 未来可扩展：装备、buff 等 -->
+      <p>当前层级：<span id="current-level">0</span></p>
+      <button id="btn-layer-up" disabled>+1</button>
+      <button id="btn-layer-down" disabled>-1</button>
+    </div>
+  </div>
+
+  <!-- 底部操作 -->
+  <div class="action-bar">
+    <button id="back-to-desktop">返回桌面</button>
+  </div>
+
+  <script src="scripts/settings.js"></script>
+  <script src="scripts/gap-script.js"></script>
+</body>
+</html>

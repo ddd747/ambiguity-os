@@ -13,15 +13,16 @@
   <link rel="manifest" href="manifest.json">
   
   <title>AmbiguityOS</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="styles/main.css">
+
 
   <!-- 预加载开机音效 -->
-  <audio id="door-audio" src="door-open.mp3" preload="auto"></audio>
-  <audio id="startup-audio" src="startup-sound.mp3" preload="auto"></audio>
+  <audio id="door-audio" src="assets/sounds/door-open.mp3" preload="auto"></audio>
+  <audio id="startup-audio" src="assets/sounds/startup-sound.mp3" preload="auto"></audio>
   <!-- 其他 meta -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 </head>
 
 <!-- 我的电脑窗口 -->
@@ -32,10 +33,10 @@
   </div>
   <div class="window-content">
     <div class="drive-list">
-      <div class="drive-item">3.5 英寸软盘 (A:)</div>
-      <div class="drive-item drive-c">本地磁盘 (C:)</div>
-      <div class="drive-item">DVD 驱动器 (D:)</div>
-      <div class="drive-item">AmbiguityOS (E:)</div>
+      <div class="drive-item" data-drive="a">3.5 英寸软盘 (A:)</div>
+      <div class="drive-item drive-c"data-drive="c">本地磁盘 (C:)</div>
+      <div class="drive-item"data-drive="d">DVD 驱动器 (D:)</div>
+      <div class="drive-item"data-drive="e">AmbiguityOS (E:)</div>
     </div>
     <div class="system-info">
       <p>处理器：Living Core v1.0</p>
@@ -121,7 +122,7 @@
 <!-- 开机动画 -->
 <div id="boot-screen" class="hidden">
   <div class="boot-logo">
-    <img src="logo.png" alt="AmbiguityOS">
+    <img src="assets/images/logo.png" alt="AmbiguityOS">
   </div>
   <div class="progress-container">
     <div class="progress-bar">
@@ -132,7 +133,7 @@
 
   <!-- 桌面背景 -->
 <div id="desktop" class="desktop hidden">
-  <img src="bliss.jpg" alt="Bliss" class="bliss-wallpaper">
+  <img src="assets/images/bliss.jpg" alt="Bliss" class="bliss-wallpaper">
 
  <!-- 桌面图标 -->
 <div class="desktop-icons">
@@ -197,13 +198,20 @@
       </svg>
     </div>
   </div>
-  <!-- Talking 气泡 -->
-<div id="window-bubble" class="window-bubble hidden">
-  <div class="bubble-header">talking</div>
-  <ul class="bubble-options">
-    <li data-action="chat">和舍友聊天</li>
-    <li data-action="move-to-window">移到窗边</li>
-    <li data-action="dismiss">取消</li>
+ <!-- Window 舍友交互气泡 -->
+<div id="window-bubble" class="hidden" style="
+  position: absolute;
+  background: #ffffc0;
+  border: 1px solid #000;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+  padding: 8px;
+  z-index: 100;
+  font-family: 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+">
+  <ul class="bubble-options" style="list-style: none; padding: 0; margin: 0;">
+    <li data-action="chat" style="padding: 4px 0; cursor: pointer;">💬 和舍友聊天</li>
+    <li data-action="move-to-window" style="padding: 4px 0; cursor: pointer;">🏠 移到窗边</li>
   </ul>
 </div>
 
@@ -227,14 +235,16 @@
   </div>
   <div class="menu-content">
     <div class="menu-section folders">
-      <div class="menu-item" data-action="open" data-target="documents">我的文档</div>
-      <div class="menu-item" data-action="open" data-target="pictures">图片</div>
-      <div class="menu-item" data-action="open" data-target="music">音乐</div>
+      <div class="menu-item" data-app="documents">​​📄​ 我的文档</div>
+      <div class="menu-item" data-app="videos">🎬 视频</div>
+      <div class="menu-item" data-app="pictures">🖼️ 图片</div>
+      <div class="menu-item" data-app="downloads">​​🛂​ 下载</div>
+      <div class="menu-item" data-app="music">🎵 音乐</div>
     </div>
     <div class="menu-section programs">
-      <div class="menu-item" data-action="launch" data-app="ambiguity-gap">《歧义裂隙》</div>
-      <div class="menu-item" data-action="launch" data-app="notepad">记事本</div>
-      <div class="menu-item" data-action="launch" data-app="calc">计算器</div>
+      <div class="menu-item" data-action="launch" data-app="ambiguity-gap">​​​🔞​《歧义裂隙》</div>
+      <div class="menu-item" data-action="launch" data-app="notepad">​​​📝​记事本</div>
+      <div class="menu-item" data-action="launch" data-app="calc">🖩计算器</div>
     </div>
   </div>
 </div>
@@ -250,14 +260,159 @@
   <button id="msg-close">确定</button>
 </div>
 
-  <script src="script.js"></script>
+  <script type="module" src="./scripts/main.js"></script>
   <!-- PWA 安装提示条 -->
 <div id="install-hint" class="install-hint hidden">
   <span>💡 将 AmbiguityOS 添加到主屏幕，获得完整体验</span>
   <button id="install-btn">安装</button>
   <button id="dismiss-install">×</button>
 </div>
+
+<!-- 下载窗口 -->
+<div id="downloads-window" class="app-window hidden">
+  <div class="window-titlebar">
+    🛂 下载
+    <span class="window-close">×</span>
+  </div>
+  <div class="window-content">
+    <p>新舍友会出现在这里。</p>
+    <p>双击 .exe 文件以添加舍友。</p>
+    <div id="downloads-list">
+      <!-- 动态生成 -->
+      <div class="folder-item disabled">暂无登记</div>
+    </div>
+  </div>
 </div>
 
+<!-- 我的文档窗口 -->
+<div id="documents-window" class="app-window hidden">
+  <div class="window-titlebar">
+    📄 我的文档
+    <span class="window-close">×</span>
+  </div>
+  <div class="window-content">
+    <p>技能说明、日志、配置文件存放于此。</p>
+    <ul>
+      <li><a href="#" onclick="openSkillDoc('current')">📄 当前角色技能说明.txt</a></li>
+      <li>📝 session.log</li>
+      <li>⚙️ preferences.ini</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 音乐窗口 -->
+<div id="music-window" class="app-window hidden">
+  <div class="window-titlebar">
+    🎵 音乐
+    <span class="window-close">×</span>
+  </div>
+  <div class="window-content">
+    <p>背景音乐随角色 HP% 变化音量。</p>
+    <button onclick="uploadBGM()">上传本地音频</button>
+    <div id="bgm-status">未设置自定义 BGM</div>
+  </div>
+</div>
+
+<!-- 视频窗口 -->
+<div id="videos-window" class="app-window hidden">
+  <div class="window-titlebar">
+    🎬 视频
+    <span class="window-close">×</span>
+  </div>
+  <div class="window-content">
+    <p>实时状态监控面板</p>
+    <div id="status-monitor">
+      <p>当前角色：<span id="monitor-char">未选择</span></p>
+      <p>回合数：<span id="monitor-turn">--</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- 进程选择器窗口 -->
+<div id="process-selector-window" class="app-window hidden" style="width: 320px; height: auto; min-height: 200px;">
+  <div class="window-titlebar" style="background: linear-gradient(to bottom, #000080, #000040); color: white; padding: 4px 8px; font-weight: bold;">
+    进程选择器
+    <span class="window-close" data-target="process-selector-window">×</span>
+  </div>
+  <div class="window-content" style="padding: 16px; background: #c0c0c0; font-family: 'Microsoft YaHei', sans-serif;">
+    <p>请选择一个主角色：</p>
+    <div id="character-list" style="margin: 10px 0;"></div>
+    <div style="text-align: right; margin-top: 12px;">
+      <button id="confirm-select-btn" style="width: 70px; background: #d4d0c8; border: 1px solid #000; padding: 3px 8px; cursor: pointer;">确定</button>
+      <button id="cancel-select-btn" style="width: 70px; background: #d4d0c8; border: 1px solid #000; padding: 3; cursor: pointer;">取消</button>
+    </div>
+  </div>
+</div>
+
+</div>
+<!-- 3D Window 舍友容器 -->
+<div id="window-3d-container" class="window-3d-container hidden"></div>
+<!-- Window 姿势驱动器 (D:) -->
+<div id="pose-editor-window" class="app-window hidden">
+  <div class="window-titlebar">
+    Window 姿势驱动器 (D:)
+    <span class="window-close">×</span>
+  </div>
+  <div class="window-content">
+    <p>调整骨骼参数以校准 Window 的肢体协议。</p>
+    
+    <!-- 骨骼选择区 -->
+    <div style="margin: 10px 0;">
+      <label><strong>添加骨骼控制：</strong></label><br>
+      <select id="bone-selector"></select>
+      <select id="axis-selector">
+        <option value="x">X 轴</option>
+        <option value="y">Y 轴</option>
+        <option value="z">Z 轴</option>
+      </select>
+      <button id="add-bone-control">+</button>
+    </div>
+
+    <!-- 动态滑块容器 -->
+    <div id="dynamic-sliders" style="max-height: 300px; overflow-y: auto;"></div>
+
+    <!-- 相机 X -->
+<div class="pose-slider-group">
+  <label>相机 X</label>
+  <input type="range" id="cam-x" min="-5" max="5" step="0.1" class="slider desktop-only">
+  <input type="number" id="cam-x-input" min="-5" max="5" step="0.1" class="numeric mobile-only">
+  <span id="cam-x-val">0.00</span>
+</div>
+
+<!-- 相机 Y -->
+<div class="pose-slider-group">
+  <label>相机 Y</label>
+  <input type="range" id="cam-y" min="0" max="3" step="0.1" class="slider desktop-only">
+  <input type="number" id="cam-y-input" min="0" max="3" step="0.1" class="numeric mobile-only">
+  <span id="cam-y-val">1.50</span>
+</div>
+
+<!-- 相机 Z -->
+<div class="pose-slider-group">
+  <label>相机 Z</label>
+  <input type="range" id="cam-z" min="2" max="10" step="0.1" class="slider desktop-only">
+  <input type="number" id="cam-z-input" min="2" max="10" step="0.1" class="numeric mobile-only">
+  <span id="cam-z-val">5.00</span>
+</div>
+
+    <div style="margin-top: 15px;">
+      <button id="pose-save-btn">💾 保存为默认</button>
+      <button id="pose-reset-btn">🔄 重置为 T-pose</button>
+      <!-- 新增：中文化切换 -->
+      <label class="toggle-switch">
+      <input type="checkbox" id="chinese-bone-names-toggle">
+        <span class="slider"></span>
+        <span class="label-text">📑骨骼名称中文化</span>
+      </label>
+      <button id="edit-mapping-btn">✏️ 你的舍友好像不一样？</button>
+      <!-- 舍友选择器 -->
+      <div id="roommate-selector" style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="roommate-btn active" data-id="windown">Windown</button>
+        <button class="roommate-btn" data-id="generic">通用</button>
+        <button class="roommate-btn" data-id="yinian">［意念］</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>

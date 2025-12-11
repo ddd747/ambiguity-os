@@ -1,0 +1,972 @@
+/* 全局重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #000;
+  color: #0f0;
+  font-family: 'Courier New', monospace;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 虚拟电脑外壳 */
+.retro-pc {
+  position: relative;
+  width: 94vw;
+  max-width: 800px;
+  height: 70vh;
+  max-height: 600px;
+  border: 4px solid #333;
+  border-radius: 8px;
+  background: #000;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.15);
+  overflow: hidden;
+}
+
+.screen {
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  overflow: hidden;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* CRT 扫描线效果 */
+.scanlines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 1px,
+    rgba(0, 20, 0, 0.15) 1px,
+    rgba(0, 20, 0, 0.15) 2px
+  );
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Window 弹窗 */
+.window-dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  max-width: 500px;
+  background: #c0c0c0;
+  border: 2px solid #000;
+  border-top: 20px solid #000080;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+  z-index: 10;
+  padding: 16px;
+  font-size: 16px;
+  color: #000;
+  font-family: 'Microsoft Yahei', sans-serif;
+  text-align: center;
+}
+
+.dialog-header {
+  position: absolute;
+  top: -18px;
+  left: 8px;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.dialog-body {
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+button {
+  background: #d4d0c8;
+  border: 2px solid #000;
+  padding: 6px 16px;
+  font-family: 'Microsoft Yahei', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #e0e0e0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* 光标闪烁（可选） */
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  background: #0f0;
+  margin-left: 2px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* 桌面背景 */
+.desktop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #87ceeb; /* 备用蓝天色 */
+}
+
+.bliss-wallpaper {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 旋转提示（仅竖屏显示） */
+.rotate-prompt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  font-family: 'Courier New', monospace;
+  display: none; /* 默认隐藏 */
+  z-index: 100;
+}
+
+.rotate-prompt p {
+  margin: 8px 0;
+  font-size: 18px;
+}
+
+/* 竖屏时显示提示 */
+@media (orientation: portrait) {
+  .rotate-prompt {
+    display: block;
+  }
+  .bliss-wallpaper {
+    filter: blur(2px); /* 竖屏时轻微模糊，强调“非理想状态” */
+  }
+}
+
+/* 横屏时全屏清晰 */
+@media (orientation: landscape) {
+  .rotate-prompt {
+    display: none !important;
+  }
+}
+
+/* === 桌面图标区域 === */
+.desktop-icons {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  z-index: 10;
+}
+
+.icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE10+ */
+  user-select: none;         /* Standard */
+
+}
+
+.icon span {
+  margin-top: 6px;
+  font-size: 14px;
+  color: white;
+  text-shadow: 1px 1px 2px black;
+}
+
+/* 图标绘制（纯 CSS） */
+.icon-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  box-shadow: 
+  inset 0 -2px 4px rgba(0,0,0,0.3),
+  inset 0 1px 1px rgba(255,255,255,0.4),
+  2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.my-computer {
+  background: linear-gradient(135deg, #4a90e2, #357abd);
+}
+
+.recycle-bin {
+  background: linear-gradient(135deg, #7ed321, #5ab51a);
+}
+
+.internet-explorer {
+  background: linear-gradient(135deg, #f5a623, #d08700);
+}
+
+/* === 任务栏 === */
+.taskbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 36px;
+  background: linear-gradient(to bottom, #000080, #000040);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.5);
+  z-index: 20;
+}
+
+/* 开始按钮新样式 */
+.start-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(to bottom, #0000c0, #000080);
+  color: white;
+  padding: 6px 12px;
+  border: 1px solid #fff;
+  border-radius: 3px;
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE10+ */
+  user-select: none;         /* Standard */
+
+  box-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+  font-size: 14px;
+}
+
+.windows-logo {
+  margin-top: -1px; /* 微调对齐 */
+}
+
+.clock {
+  color: white;
+  margin-left: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  padding: 4px 10px;
+}
+
+/* === 响应式：竖屏隐藏桌面UI === */
+@media (orientation: portrait) {
+  .desktop-icons,
+  .taskbar {
+    display: none !important;
+  }
+}
+
+/* === 开始菜单面板 === */
+.start-menu {
+  position: absolute;
+  bottom: 36px; /* 在任务栏上方 */
+  left: 0;
+  width: 400px;
+  background: #c0c0c0;
+  border: 2px solid #000;
+  box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+  font-family: 'Microsoft Yahei', sans-serif;
+  z-index: 30;
+  display: flex;
+}
+
+.menu-header {
+  width: 100px;
+  background: linear-gradient(to bottom, #000080, #000040);
+  color: white;
+  padding: 12px 8px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+
+.user-info {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #a0d0ff;
+}
+
+.menu-content {
+  display: flex;
+  flex: 1;
+}
+
+.menu-section {
+  flex: 1;
+  padding: 12px;
+}
+
+.menu-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+  margin: 2px 0;
+  font-size: 14px;
+}
+
+.menu-item:hover {
+  background: #000080;
+  color: white;
+}
+
+/* === 系统消息弹窗 === */
+.system-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #c0c0c0;
+  border: 2px solid #000;
+  border-top: 20px solid #000080;
+  padding: 16px;
+  z-index: 100;
+  width: 80vw;
+  max-width: 400px;
+  text-align: center;
+  font-family: 'Microsoft Yahei', sans-serif;
+}
+
+.dialog-title {
+  position: absolute;
+  top: -18px;
+  left: 8px;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.dialog-body {
+  margin-bottom: 16px;
+  line-height: 1.6;
+  color: #000;
+}
+
+#msg-close {
+  background: #d4d0c8;
+  border: 2px solid #000;
+  padding: 6px 16px;
+  font-family: 'Microsoft Yahei', sans-serif;
+  cursor: pointer;
+}
+
+/* 全局：允许内容延伸到安全区域 */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 桌面：延伸到顶部和底部 */
+.desktop {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* 任务栏：固定在视觉底部（避开 Home Indicator） */
+.taskbar {
+  bottom: env(safe-area-inset-bottom); /* 关键！ */
+}
+
+/* 开始菜单：确保不被底部工具栏遮挡 */
+.start-menu {
+  bottom: calc(36px + env(safe-area-inset-bottom));
+}
+
+/* === 通用应用窗口 === */
+.app-window {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 600px;
+  height: 70vh;
+  background: #c0c0c0;
+  border: 2px solid #000;
+  box-shadow: 6px 6px 12px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.window-titlebar {
+  background: linear-gradient(to bottom, #000080, #000040);
+  color: white;
+  padding: 4px 10px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE10+ */
+  user-select: none;         /* Standard */
+
+}
+
+.window-close {
+  background: #d4d0c8;
+  border: 1px solid #000;
+  width: 18px;
+  height: 18px;
+  text-align: center;
+  line-height: 16px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.window-content {
+  flex: 1;
+  padding: 12px;
+  background: white;
+  overflow: auto;
+}
+
+/* === 我的电脑样式 === */
+.drive-item {
+  padding: 6px 10px;
+  margin: 4px 0;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.drive-item:hover {
+  background: #e0e0e0;
+  border: 1px solid #a0a0a0;
+}
+
+.drive-c {
+  font-weight: bold;
+}
+
+.system-info {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid #ccc;
+  font-size: 14px;
+  color: #333;
+}
+
+/* === IE 样式 === */
+.ie-titlebar {
+  background: linear-gradient(to bottom, #0a3694, #002266);
+}
+
+.ie-toolbar {
+  background: #d4d0c8;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid #808080;
+}
+
+.ie-btn {
+  width: 24px;
+  height: 22px;
+  background: #f0f0f0;
+  border: 1px solid #808080;
+  cursor: pointer;
+}
+
+.ie-address {
+  flex: 1;
+  height: 22px;
+  border: 1px solid #808080;
+  padding: 2px 6px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+
+.ie-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #000;
+}
+
+.ie-logo {
+  font-size: 60px;
+  font-weight: bold;
+  color: #f5a623;
+  margin-bottom: 16px;
+}
+
+/* === 开机动画 === */
+#boot-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.boot-logo img {
+  height: 60px;
+  margin-bottom: 40px;
+  opacity: 0.9;
+  transition: transform 4s ease-out; /* 用于后期移动 */
+}
+
+.progress-container {
+  width: 60%;
+  max-width: 500px;
+  height: 20px;
+  background: #333;
+  border: 1px solid #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, #0a246a, #000033);
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(to right, #0078d7, #00a0e9);
+  box-shadow: 0 0 10px #00a0e9;
+  transition: width 0.3s ease;
+}
+
+.install-hint {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #fffde7;
+  border-top: 1px solid #ffd54f;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #5d4037;
+  z-index: 999;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+}
+
+.install-hint button {
+  margin-left: 12px;
+  background: #ff8f00;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+#dismiss-install {
+  background: #bdbdbd;
+  width: 24px;
+  height: 24px;
+  text-align: center;
+  line-height: 22px;
+}
+
+.browser-warning {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,235,59,0.9);
+  color: #e65100;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+}
+
+/* === Window 实体 - Like2D 坐姿舍友 === */
+.window-agent {
+  position: fixed; /* ← 必须是 fixed */
+  z-index: 9999;
+  cursor: grab;
+  transition: transform 0.2s, opacity 0.3s;
+}
+
+/* 身体：坐姿，带肩膀和手臂暗示 */
+.window-body {
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  width: 44px;
+  height: 56px;
+  background: #e0e0e0;
+  border-radius: 8px 8px 6px 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  /* 添加微妙渐变，模拟光影 */
+  background: linear-gradient(to bottom, #f0f0f0, #d0d0d0);
+}
+
+/* 头部：稍大，更自然 */
+.window-head {
+  position: absolute;
+  top: -28px; /* 头在身体上方 */
+  left: 16px;
+  width: 28px;
+  height: 28px;
+  background: #e0e0e0;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  background: linear-gradient(to bottom, #f5f5f5, #d8d8d8);
+}
+
+/* 表情 */
+.window-face {
+  pointer-events: none;
+}
+
+/* 离开状态 */
+.window-agent.away {
+  opacity: 0.4;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+/* 悬停效果 */
+.window-agent:not(.away):hover {
+  transform: scale(1.08);
+}
+.window-agent:not(.away):hover .window-body,
+.window-agent:not(.away):hover .window-head {
+  background: linear-gradient(to bottom, #ffffff, #e0e0e0);
+}
+
+/* === Talking 气泡 === */
+.window-bubble {
+  position: fixed;
+  background: rgba(20, 20, 30, 0.92);
+  border: 1px solid #4cc9f0;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  color: #e0e0ff;
+  box-shadow: 0 4px 12px rgba(76, 201, 240, 0.25);
+  z-index: 1000;
+  min-width: 140px;
+  pointer-events: auto;
+}
+
+.bubble-header {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #4cc9f0;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+
+.bubble-options {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bubble-options li {
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color 0.2s;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE10+ */
+  user-select: none;         /* Standard */
+
+}
+
+.bubble-options li:hover {
+  color: white;
+  text-shadow: 0 0 4px #4cc9f0;
+}
+
+/* 隐藏状态 */
+.hidden {
+  display: none !important;
+}
+
+/* === 行走状态 === */
+.window-agent.walking {
+  animation: walk-cycle 0.8s infinite ease-in-out;
+}
+
+@keyframes walk-cycle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px); /* 轻微上下浮动，模拟步伐 */
+  }
+}
+
+/* 上身 */
+.window-torso {
+  position: absolute;
+  bottom: 20px; /* 给腿留空间 */
+  left: 12px;
+  width: 36px;
+  height: 40px;
+  background: linear-gradient(to bottom, #f0f0f0, #d0d0d0);
+  border-radius: 6px 6px 4px 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 腿部容器 */
+.window-legs {
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  width: 28px;
+  height: 20px;
+}
+
+.leg {
+  position: absolute;
+  width: 6px;
+  height: 16px;
+  background: #c0c0c0;
+  border-radius: 2px;
+  bottom: 0;
+}
+
+.leg.left {
+  left: 0;
+  animation: leg-swing-left 0.8s infinite ease-in-out;
+}
+
+.leg.right {
+  right: 0;
+  animation: leg-swing-right 0.8s infinite ease-in-out;
+}
+
+@keyframes leg-swing-left {
+  0%, 100% { transform: rotate(5deg); }
+  50% { transform: rotate(-8deg); }
+}
+
+@keyframes leg-swing-right {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(8deg); }
+}
+
+/* 静坐时隐藏腿？不，我们让她一直有腿，但 idle 时不动画 */
+.window-agent:not(.walking) .leg {
+  animation: none;
+  transform: rotate(0);
+}
+
+/* 聊天窗口输入框 */
+#chat-input {
+  border: 1px solid #808080;
+  border-radius: 3px;
+  background: #fff;
+  color: #000;
+}
+
+#chat-input:focus {
+  outline: 1px solid #0078d7;
+}
+
+/* 3D 窗口容器过渡效果 */
+#window-3d-container {
+  transition: opacity 0.3s ease;
+  pointer-events: none; /* 不拦截鼠标事件 */
+}
+
+.window-3d-container canvas {
+  border: 2px solid #00a0e9; /* Windows 蓝 */
+  border-radius: 4px;
+}
+
+/* ========== 3D 舍友容器（固定右下角，响应式大小） ========== */
+.window-3d-container {
+  position: fixed;
+  bottom: 36px; /* 避开任务栏 */
+  right: 20px;
+  min-width: 200px;
+  min-height: 200px;
+  width: 30vw;   /* 改为视口宽度百分比 */
+  height: 40vh;  /* 改为视口高度百分比 */
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.window-3d-container.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 手机端：确保最小尺寸不被压缩 */
+@media (max-width: 600px) {
+  .window-3d-container {
+    width: 45vw !important;   /* 更宽 */
+    height: 50vh !important;  /* 更高 */
+    min-width: 240px !important;  /* 强制最小宽度 */
+    min-height: 240px !important; /* 强制最小高度 */
+    transform: scale(0.9);        /* 微调避免溢出 */
+    transform-origin: bottom right;
+  }
+}
+
+/* === Window 姿势驱动器 === */
+.pose-slider-group {
+  margin: 10px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.pose-slider-group label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.pose-slider-group input[type="range"] {
+  width: 100%;
+}
+
+/* 中文化切换按钮 */
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  font-size: 14px;
+  user-select: none;
+}
+.toggle-switch .slider {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  background-color: #ccc;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-switch input:checked + .slider {
+  background-color: #4CAF50;
+}
+.toggle-switch input:checked + .slider::after {
+  transform: translateX(16px);
+}
+.toggle-switch .slider::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: 0.2s;
+}
+
+/* === 舍友选择按钮 === */
+.roommate-btn {
+  padding: 6px 12px;
+  background: #e0e0e0;
+  border: 1px solid #a0a0a0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.roommate-btn:hover {
+  background: #d0d0d0;
+}
+.roommate-btn.active {
+  background: #0078d7;
+  color: white;
+  border-color: #005a9e;
+}
+
+/* 默认显示滑块，隐藏输入框 */
+.numeric { display: none; }
+.slider { display: block; }
+
+/* 手机优先：宽度 <= 768px */
+@media (max-width: 768px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { 
+    display: block !important;
+    width: 80px;
+    padding: 4px;
+    font-size: 16px; /* 防止 iOS 缩放 */
+  }
+}
+
+/* 防止 iOS 双击缩放破坏布局 */
+body {
+  touch-action: manipulation;
+}
+
+/* 输入框大一点，方便点按 */
+.mobile-only {
+  padding: 8px !important;
+  font-size: 18px !important; /* 确保 iOS 不放大 */
+  border: 1px solid #888;
+  border-radius: 4px;
+}

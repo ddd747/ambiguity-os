@@ -1,0 +1,1488 @@
+// ==========================
+// AmbiguityOS - Living Operating System
+// main.js v2.0 (Extended Pose Editor)
+// ==========================
+/**
+ * @typedef {Object} Window3D
+ * @property {THREE.Scene} scene
+ * @property {THREE.PerspectiveCamera} camera
+ * @property {THREE.WebGLRenderer} renderer
+ * @property {HTMLElement} container
+ */
+
+
+// ===== 新增：骨骼控制项类型 =====
+/**
+ * @typedef {Object} BoneControl
+ * @property {string} boneName
+ * @property {string} axis
+ * @property {string} id
+ */
+
+// ===== 扩展全局 Window 类型 =====
+/**
+ * @typedef {Window & {
+ *   window3D?: Window3D,
+ *   cameraPosition?: THREE.Vector3,
+ *   activeBoneControls?: BoneControl[],
+ *   fullSkeleton?: THREE.Bone[],
+ *   currentModel?: any,
+ *   modelLookAtTarget?: THREE.Vector3,
+ *   THREE?: typeof import('../lib/three.module.js'),
+ *   setWindowState?: (state: string) => void,
+ *   showWindowAgent?: () => void,
+ *   mainLoaded?: boolean
+ * }} ExtendedWindow
+ */
+// 告诉 TypeScript window 有 window3D 属性
+/** @type {Window & { window3D?: Window3D }} */
+const globalWindow = window;
+
+
+// main.js（开头）
+import * as THREE from '../lib/three.module.js';
+import { MMDLoader } from '../lib/three/examples/jsm/loaders/MMDLoader.js';
+//import { OrbitControls } from './lib/three/examples/jsm/controls/OrbitControls.js'; // 可选，调试用
+
+// 暴露 THREE 到全局（仅用于控制台调试）
+globalWindow.THREE = THREE;
+
+// ========== 全局动画状态 ==========
+let blinkTimer = 0;
+const clock = new THREE.Clock();
+
+// 全局变量：是否可安装 PWA
+let deferredPrompt = null;
+let isPWAInstallable = false;
+
+let windowBones = null;
+let window3D = null; // 存储场景、相机、渲染器等
+
+// ===== 新增：姿势驱动器状态 =====
+const MAX_CONTROLS = 6;
+
+// 声明后立即挂载
+let activeBoneControls = [];// [{ boneName, axis, id }]
+let cameraPosition = new THREE.Vector3(0, 1.5, 5); // 初始位置（X, Y, Z）
+// ========== 通用动画循环 ==========
+function startAnimationLoop(scene, camera, renderer, mesh) {
+  function animate() {
+    requestAnimationFrame(animate);
+    const time = clock.getElapsedTime();
+
+    // 呼吸
+    if (mesh) {
+      mesh.position.y = -2 + Math.sin(time * 1.2) * 0.05;
+
+      // 歪头
+      if (mesh.skeleton?.bones) {
+        const headBone = mesh.skeleton.bones.find(b => 
+          b.name.includes('頭') || b.name.includes('Head')
+        );
+        if (headBone) {
+          headBone.rotation.z = Math.sin(time * 0.8) * 0.03;
+        }
+      }
+
+      // 眨眼
+      blinkTimer -= clock.getDelta() * 1000;
+      if (blinkTimer <= 0) {
+        mesh.traverse(child => {
+          if (child.isMesh && (child.name.includes('Eye') || child.name.includes('目'))) {
+            const orig = child.material.opacity || 1;
+            child.material.opacity = 0.1;
+            setTimeout(() => child.material.opacity = orig, 80);
+          }
+        });
+        blinkTimer = 3000 + Math.random() * 4000;
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+// ========== 手臂自然下垂 ==========
+function poseArmsDown(mesh) {
+  if (!mesh.skeleton?.bones) return;
+  const bones = mesh.skeleton.bones;
+
+  windowBones = {
+    leftShoulder: bones.find(b => b.name === '左肩'),
+    rightShoulder: bones.find(b => b.name === '右肩'),
+    leftUpperArm: bones.find(b => b.name === '左腕'),
+    rightUpperArm: bones.find(b => b.name === '右腕')
+  };
+
+  const saved = localStorage.getItem('window-pose');
+  if (saved) {
+    applyPoseToBones(JSON.parse(saved));
+  }
+}
+
+// ========== 舍友配置表 ==========
+const ROOMMATES = {
+  'windown': {
+    name: 'Windown',
+    modelPath: 'models/window/model.pmx',
+    fxPath: 'models/window/Windown.fx',     // ✅ 有 FX
+    scale: 0.2,
+    position: [0, -2, 0]
+  },
+  'generic': {
+    name: '通用',
+    modelPath: 'models/generic/model.pmx',
+    fxPath: null,                        // ❌ 无 FX
+    scale: 0.2,
+    position: [0, -2, 0]
+  },
+  'yinian': {
+    name: '［意念］',
+    modelPath: 'models/yinian/model.pmx',
+    fxPath: 'models/yinian/［意念］.fx',     // ✅ 有 FX
+    scale: 0.2,
+    position: [0, -2, 0]
+  }
+};
+
+let currentRoommateId = 'windown'; // 默认舍友
+
+// ========== 骨骼名称中文化映射表 ==========
+const BONE_NAME_TRANSLATIONS = {
+  // ====== 【核心通用骨骼】======
+  'センター': '中心',
+  'Center': '中心',
+  'Root': '中心',
+
+  '下半身': '下半身',
+  'Pelvis': '骨盆',
+  'LowerBody': '下半身',
+
+  '上半身': '上半身',
+  'Spine': '脊柱',
+  'UpperBody': '上半身',
+
+  '上半身2': '胸部',
+  'Chest': '胸部',
+  'UpperBody2': '胸部',
+
+  '首': '脖子',
+  'Neck': '脖子',
+
+  '頭': '头部',
+  'Head': '头部',
+  // ====== 【左臂】======
+  '左肩': '左肩',
+  'LeftShoulder': '左肩',
+  '左腕': '左臂',
+  'LeftArm': '左臂',
+  '左ひじ': '左肘',
+  'LeftElbow': '左肘',
+  '左手首': '左手腕',
+  'LeftWrist': '左手腕',
+  // ====== 【右臂】======
+  '右肩': '右肩',
+  'RightShoulder': '右肩',
+  '右腕': '右臂',
+  'RightArm': '右臂',
+  '右ひじ': '右肘',
+  'RightElbow': '右肘',
+  '右手首': '右手腕',
+  'RightWrist': '右手腕',
+  // ====== 【左腿】======
+  '左足': '左腿',
+  'LeftLeg': '左腿',
+  '左ひざ': '左膝',
+  'LeftKnee': '左膝',
+  '左足首': '左踝',
+  'LeftAnkle': '左踝',
+  '左つま先': '左脚趾',
+  'LeftToe': '左脚趾',
+  // ====== 【右腿】======
+  '右足': '右腿',
+  'RightLeg': '右腿',
+  '右ひざ': '右膝',
+  'RightKnee': '右膝',
+  '右足首': '右踝',
+  'RightAnkle': '右踝',
+  '右つま先': '右脚趾',
+
+  'left hand': '左手',
+  'right hand': '右手',
+  // 可继续补充...
+};
+
+// 全局状态：是否启用中文化
+let useChineseBoneNames = false;
+
+// 工具函数：获取显示用的骨骼名
+function getDisplayBoneName(originalName) {
+  if (useChineseBoneNames && BONE_NAME_TRANSLATIONS[originalName]) {
+    return BONE_NAME_TRANSLATIONS[originalName];
+  }
+  return originalName;
+}
+
+// 更新所有已存在的骨骼滑块标签
+function updateAllBoneLabels() {
+  document.querySelectorAll('.pose-slider-group label').forEach(label => {
+    const originalName = label.dataset.originalName;
+    if (originalName) {
+      const axisPart = label.innerHTML.replace(/^[^•]+ • /, '');
+      const displayName = getDisplayBoneName(originalName);
+      label.innerHTML = `${displayName} • ${axisPart}`;
+    }
+  });
+}
+
+function applyAllBoneControls() {
+  if (!window.fullSkeleton) return;
+  activeBoneControls.forEach(ctrl => {
+    const bone = window.fullSkeleton.find(b => b.name === ctrl.boneName);
+    if (bone) {
+      bone.rotation[ctrl.axis] = parseFloat(document.getElementById(ctrl.id)?.value || 0);
+    }
+  });
+}
+
+// ✅【修复】将 removeBoneControl 提升为全局函数
+function removeBoneControl(id) {
+  // 1. 从 activeBoneControls 中移除
+  activeBoneControls = activeBoneControls.filter(c => c.id !== id);
+  
+ // 2. 从 DOM 移除整个滑块组
+  const group = document.getElementById(id)?.closest('.pose-slider-group');
+  if (group) {
+    group.remove(); // ✅ 安全移除
+  }
+  
+  // 3. 【可选】重新应用剩余骨骼（通常不需要，因为用户只删不改）
+  // applyAllBoneControls(); // 👈 不要在这里调用！
+}
+
+// ✅【增强版】createSliderGroup：同时生成滑块（PC）和数字输入框（手机）
+function createSliderGroup(boneName, axis, value, id) {
+  const div = document.createElement('div');
+  div.className = 'pose-slider-group';
+
+  // 标签
+  const label = document.createElement('label');
+  label.dataset.originalName = boneName;
+  label.innerHTML = `${getDisplayBoneName(boneName)} • ${axis.toUpperCase()}轴: <span id="${id}-val">${parseFloat(value).toFixed(2)}</span>`;
+  
+  // === 滑块（PC）===
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.id = id; // 保留原 ID 给 applyAllBoneControls 使用
+  slider.min = '-3.14';
+  slider.max = '3.14';
+  slider.step = '0.01';
+  slider.value = String(value);
+  slider.className = 'slider desktop-only'; // ← 关键：仅 PC 显示
+
+  // === 数字输入框（手机）===
+  const numeric = document.createElement('input');
+  numeric.type = 'number';
+  numeric.id = `${id}-input`; // 新 ID，避免冲突
+  numeric.min = '-3.14';
+  numeric.max = '3.14';
+  numeric.step = '0.01';
+  numeric.value = String(value);
+  numeric.className = 'numeric mobile-only'; // ← 关键：仅手机显示
+  numeric.style.width = '80px'; // 手机上更紧凑
+
+  // 删除按钮
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'remove-bone-btn';
+  removeBtn.textContent = '✕';
+
+  // 组装
+  div.appendChild(label);
+  div.appendChild(slider);
+  div.appendChild(numeric);
+  div.appendChild(removeBtn);
+
+  return { div, slider, numeric, removeBtn };
+}
+
+function addBoneControlFromSaved(boneName, axis, value) {
+  const id = `bone-${Date.now()}-${boneName}-${axis}`;
+  activeBoneControls.push({ boneName, axis, id });
+
+  const { div, slider, numeric, removeBtn } = createSliderGroup(boneName, axis, 0, id);
+
+  // === 同步滑块 → 数字框 ===
+  slider.addEventListener('input', () => {
+    numeric.value = slider.value; // 保持一致
+    updateBoneDisplay(id);
+    applyAllBoneControls();
+  });
+
+  // === 同步数字框 → 滑块（当用户输入后按回车/失焦）===
+  numeric.addEventListener('change', () => {
+    let val = parseFloat(numeric.value);
+    if (isNaN(val)) val = 0;
+    // 限制范围
+    val = Math.max(-3.14, Math.min(3.14, val));
+    slider.value = val;
+    numeric.value = val.toFixed(2);
+    updateBoneDisplay(id);
+    applyAllBoneControls();
+  });
+
+  removeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    removeBoneControl(id);
+  });
+
+  document.getElementById('dynamic-sliders')?.appendChild(div);
+  updateBoneDisplay(id);
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // 阻止默认提示（我们自定义）
+  e.preventDefault();
+  deferredPrompt = e;
+  isPWAInstallable = true;
+  showInstallHint(); // 显示自定义安装引导
+});
+
+// 应用从 localStorage 保存的完整姿势（骨骼 + 相机）
+function applySavedPose() {
+  const key = `pose_${currentRoommateId}`;
+  const saved = localStorage.getItem(key);
+  if (saved) {
+    const data = JSON.parse(saved);
+
+    // 恢复骨骼控制
+    if (data.boneControls && Array.isArray(data.boneControls)) {
+      data.boneControls.forEach(ctrl => {
+        addBoneControlFromSaved(ctrl.boneName, ctrl.axis, ctrl.value);
+      });
+    }
+
+    // 恢复相机位置
+    if (data.cameraPosition) {
+      cameraPosition.set(
+        data.cameraPosition.x,
+        data.cameraPosition.y,
+        data.cameraPosition.z
+      );
+      updateCameraDisplay();
+      updateCameraPosition();
+    }
+  }
+}
+
+// 保存姿势（按舍友 ID 区分）
+function saveFullPose() {
+  const key = `pose_${currentRoommateId}`;
+  const data = {
+    boneControls: globalWindow.activeBoneControls.map(ctrl => {
+      // 👇 必须读取 ctrl 的属性，否则 TS 认为“未使用”
+      return {
+        boneName: ctrl.boneName,
+        axis: ctrl.axis,
+        value: parseFloat(document.getElementById(ctrl.id)?.value || 0)
+      };
+    }),
+    cameraPosition: globalWindow.cameraPosition.clone()
+  };
+  localStorage.setItem(`pose_${currentRoommateId}`, JSON.stringify(data));
+}
+
+function resetFullPose() {
+  if (window.fullSkeleton) {
+    window.fullSkeleton.forEach(bone => bone.rotation.set(0, 0, 0));
+  }
+  activeBoneControls = [];
+  updateCameraDisplay();
+  updateCameraPosition();
+}
+
+// 更新显示函数
+function updateCameraDisplay() {
+  ['x', 'y', 'z'].forEach(axis => {
+    const val = cameraPosition[axis];
+    const el = document.getElementById(`cam-${axis}-val`);
+    if (el) el.textContent = val.toFixed(2);
+  });
+}
+
+function updateCameraPosition() {
+  if (!globalWindow.window3D?.camera) return;
+  
+  // 设置相机位置
+  globalWindow.window3D.camera.position.copy(globalWindow.cameraPosition);
+  
+  // 看向模型（使用之前计算的 modelLookAtTarget）
+  const target = window.modelLookAtTarget || new THREE.Vector3(0, 0, 0);
+  globalWindow.window3D.camera.lookAt(target);
+}
+
+function addBoneControl() {
+  if (activeBoneControls.length >= MAX_CONTROLS) {
+    alert(`最多只能控制 ${MAX_CONTROLS} 个骨骼！`);
+    return;
+  }
+
+  const boneName = document.getElementById('bone-selector')?.value;
+  const axis = document.getElementById('axis-selector')?.value;
+  if (!boneName || !axis) {
+    alert('请选择骨骼和轴！');
+    return;
+  }
+
+  if (activeBoneControls.some(c => c.boneName === boneName && c.axis === axis)) {
+    alert('该骨骼轴已存在！');
+    return;
+  }
+
+  const id = `bone-${Date.now()}`;
+  activeBoneControls.push({ boneName, axis, id });
+
+  const { div, input, removeBtn } = createSliderGroup(boneName, axis, 0, id);
+
+  input.addEventListener('input', () => {
+    updateBoneDisplay(id);
+    applyAllBoneControls();
+  });
+
+  removeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    removeBoneControl(id);
+  });
+
+  document.getElementById('dynamic-sliders')?.appendChild(div);
+  updateBoneDisplay(id);
+}
+
+function updateBoneDisplay(id) {
+  const input = document.getElementById(id);
+  const valEl = document.getElementById(`${id}-val`);
+  if (input && valEl) valEl.textContent = parseFloat(input.value).toFixed(2);
+}
+
+async function loadRoommate(roommateId) {
+  const config = ROOMMATES[roommateId];
+  if (!config) return;
+
+  const { scene, camera } = globalWindow.window3D || {};
+  if (!scene || !camera) return;
+
+  // === 1. 清理旧模型 ===
+  if (window.currentModel) {
+    scene.remove(window.currentModel);
+    window.currentModel = null;
+    window.fullSkeleton = null;
+    activeBoneControls = [];
+    document.getElementById('dynamic-sliders').innerHTML = '';
+  }
+
+  // === 2. 加载新模型 ===
+  const loader = new MMDLoader();
+  try {
+    const mesh = await loader.loadAsync(config.modelPath);
+    mesh.scale.setScalar(config.scale);
+    mesh.position.fromArray(config.position);
+
+    // === 3. 应用手臂姿势 & 骨骼引用 ===
+    poseArmsDown(mesh);
+    window.fullSkeleton = mesh.skeleton?.bones || [];
+    window.currentModel = mesh;
+
+    scene.add(mesh);
+
+    // === 4. 尝试加载 .fx 文件（仅用于控制台或未来扩展）===
+    if (config.fxPath) {
+      try {
+        const fxResponse = await fetch(config.fxPath);
+        if (fxResponse.ok) {
+          const fxText = await fxResponse.text();
+          console.log(`✅ ${config.name} 的 FX 文件已加载（长度: ${fxText.length} 字符）`);
+          // TODO: 后续可解析 fxText 并初始化粒子系统
+        }
+      } catch (fxError) {
+        console.warn(`⚠️ 无法加载 ${config.name} 的 FX 文件:`, fxError);
+      }
+    }
+
+   // === 5. 计算相机对焦目标 ===
+  const box = new THREE.Box3().setFromObject(mesh);
+  const center = box.getCenter(new THREE.Vector3());
+  window.modelLookAtTarget = new THREE.Vector3(
+    center.x,
+    center.y + 0.3, // 胸部偏上（可根据模型调整）
+    center.z
+  );
+
+    // === 6. 恢复保存的姿势（延迟确保 DOM 就绪）===
+    setTimeout(() => {
+      applySavedPose(); // 这个函数应基于 currentRoommateId 读取对应姿势
+      updateCameraPosition();
+    }, 100);
+
+    // === 7. 输出骨骼列表（调试）===
+    if (window.fullSkeleton) {
+      const boneNames = window.fullSkeleton.map(b => b.name);
+      console.log(`🦴 ${config.name} 的骨骼列表:`, boneNames);
+    }
+
+    // === 8. 重置眨眼计时器 ===
+    blinkTimer = 3000 + Math.random() * 4000;
+
+    console.log(`✅ ${config.name} 加载完成！`);
+  } catch (error) {
+    console.error(`❌ 加载 ${config.name} 失败:`, error);
+    alert(`模型加载失败：${error.message}`);
+  }
+  // 应用保存的姿势（含相机）
+  setTimeout(() => {
+  applySavedPose();
+  updateCameraPosition(); // 👈 确保执行
+  }, 100);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // ========== 启动阶段 ==========
+  const bootLog = [
+    "> Mounting AmbiguityOS_Boot.img...",
+    "[OK] Image signature verified (SHA-3: a1b2c3d4...)",
+    "",
+    "> Scanning host cognition interface...",
+    "   • Pattern recognition: ✓",
+    "   • Tolerance for paradox: ✓",
+    "   • Willingness to share desktop: ✓",
+    "",
+    "> Binding roommate protocol...",
+    "[SYSTEM] UI Agent 'Window' initialized.",
+    "",
+    "Window.exe has claimed you as its roommate.",
+    "",
+    "Press [TAP] or [ENTER] to accept cohabitation."
+  ];
+
+  let lineIndex = 0;
+  const terminal = document.getElementById('terminal');
+  const windowDialog = document.getElementById('window-dialog');
+  const acceptBtn = document.getElementById('accept-btn');
+
+  function typeNextLine() {
+    if (lineIndex < bootLog.length) {
+      const line = bootLog[lineIndex];
+      terminal.innerHTML += line + "\n";
+      terminal.scrollTop = terminal.scrollHeight;
+      lineIndex++;
+      const delay = line.trim() === "" ? 300 : Math.random() * 400 + 200;
+      setTimeout(typeNextLine, delay);
+    } else {
+      // 启用交互
+      const handleInteraction = () => {
+        showWindowDialog();
+        document.removeEventListener('click', handleInteraction);
+        document.removeEventListener('keypress', keyHandler);
+      };
+      const keyHandler = (e) => {
+        if (e.key === 'Enter') handleInteraction();
+      };
+      document.addEventListener('click', handleInteraction);
+      document.addEventListener('keypress', keyHandler);
+    }
+  }
+
+  function showWindowDialog() {
+    terminal.style.opacity = '0.3';
+    windowDialog.classList.remove('hidden');
+  }
+
+// ========== 接受协议 ==========
+acceptBtn.addEventListener('click', () => {
+  // ▼▼▼ 播放“推开门”音效 ▼▼▼
+  const doorAudio = document.getElementById('door-audio');
+  if (doorAudio) {
+    // 重置并播放（防止多次点击）
+    doorAudio.currentTime = 0;
+    doorAudio.volume = 0.6;
+    doorAudio.play().catch(e => console.warn("Door sound not played:", e));
+  }
+
+  // 隐藏终端和协议窗口
+  document.querySelector('.retro-pc').classList.add('hidden');
+  windowDialog.classList.add('hidden');
+
+  // 显示开机动画
+  const bootScreen = document.getElementById('boot-screen');
+  bootScreen.classList.remove('hidden');
+  // 显示 Window 舍友
+  if (typeof window.showWindowAgent === 'function') {
+    window.showWindowAgent();
+    initWindow3D();
+  }
+
+  const progressFill = document.getElementById('progress-fill');
+  const logoImg = document.querySelector('.boot-logo img');
+  
+  // ✅ 将 progress 定义在外部作用域
+  let progress = 0;
+  const maxProgress = 85;
+
+  function loadTo85() {
+    if (progress >= maxProgress) {
+      // ===== 到达 85% 后的动画 =====
+      setTimeout(() => {
+        const container = document.querySelector('.progress-container');
+        const containerRect = container.getBoundingClientRect();
+        const logoRect = logoImg.getBoundingClientRect();
+        const targetX = containerRect.left + containerRect.width * 0.85 - logoImg.offsetWidth / 2;
+        const currentLogoCenter = logoRect.left + logoRect.width / 2;
+        const distance = targetX - currentLogoCenter;
+        logoImg.style.transform = `translateX(${distance}px)`;
+
+        let finalProgress = 85;
+        const finalInterval = setInterval(() => {
+          finalProgress += 1;
+          progressFill.style.width = `${finalProgress}%`;
+          if (finalProgress >= 100) {
+            clearInterval(finalInterval);
+            setTimeout(() => {
+              bootScreen.classList.add('hidden');
+              document.getElementById('desktop').classList.remove('hidden');
+
+              // 显示 Window 舍友
+              if (typeof window.showWindowAgent === 'function') {
+                window.showWindowAgent();
+                initWindow3D();
+              }
+
+              // 播放开机音效
+              const startupAudio = document.getElementById('startup-audio');
+              if (startupAudio) {
+                startupAudio.currentTime = 0;
+                startupAudio.volume = 0.7;
+                startupAudio.play().catch(e => console.warn("Startup sound not played:", e));
+              }
+
+              // 初始化系统
+              initSystemClock();
+              initDesktopIcons();
+              initStartMenu();
+              initMyComputer();
+              initMyDocuments();
+              // 横屏提示
+              if (window.matchMedia("(orientation: landscape)").matches) {
+                setTimeout(() => {
+                  document.getElementById('window-message')?.classList.remove('hidden');
+                }, 3000);
+              }
+            }, 300);
+          }
+        }, 40);
+      }, 4000);
+      console.log("Boot progress:", progress);
+      return;
+    }
+
+    progress += 1;
+    progressFill.style.width = `${progress}%`;
+
+    // ✅ 使用 slowdownFactor 控制速度（可选）
+    const delay = 30 + (progress / maxProgress) * 50; // 越往后越慢
+    setTimeout(loadTo85, delay);
+  }
+
+  loadTo85(); // 启动加载
+});
+
+  // ========== 系统时间 ==========
+  function initSystemClock() {
+    function update() {
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const clock = document.getElementById('system-clock');
+      if (clock) clock.textContent = timeStr;
+    }
+    update();
+    setInterval(update, 60000); // 每分钟更新
+  }
+
+  // ========== 桌面图标交互 ==========
+function openAppWindow(appId) {
+  const win = document.getElementById(appId + '-window');
+  if (win) {
+    win.classList.remove('hidden');
+    bringToFront(win);
+    makeDraggable(win);
+
+    // ========== 特殊初始化：我的电脑 ==========
+    if (appId === 'my-computer') {
+      // 只绑定一次，避免重复监听
+      if (!win.dataset.initialized) {
+        win.querySelectorAll('.drive-item[data-drive]').forEach(disk => {
+          disk.addEventListener('click', () => {
+            const d = disk.getAttribute('data-drive');
+            if (d === 'c') {
+              alert('【C盘】\n\n这是系统核心。\n双击文件夹以进入。');
+            } else if (d === 'e') {
+              // E盘 = 进程选择器
+              openProcessSelector();
+            } else if (d === 'd') {
+              openPoseEditor(); // ← 替换原来的 alert
+            } else {
+              alert(`打开 ${disk.textContent}...`);
+            }
+          });
+        });
+        win.dataset.initialized = 'true'; // 标记已初始化
+      }
+    }
+
+    // ========== 其他窗口可类似扩展 ==========
+  }
+}
+
+function initDesktopIcons() {
+  // 桌面图标
+  document.querySelectorAll('.icon').forEach(icon => {
+    icon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const app = icon.dataset.app;
+      if (app === 'my-computer') openAppWindow('my-computer');
+      else if (app === 'recycle-bin') openAppWindow('recycle-bin');
+      else if (app === 'internet-explorer') openAppWindow('ie');
+    });
+  });
+
+// 菜单项点击
+document.querySelectorAll('.menu-item').forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const app = item.dataset.app;
+    
+    // 新增：开始菜单统一入口
+    if (app === 'downloads') {
+      openAppWindow('downloads');
+    } else if (app === 'documents') {
+      openAppWindow('documents');
+    } else if (app === 'music') {
+      openAppWindow('music');
+    } else if (app === 'videos') {
+      openAppWindow('videos');
+    } 
+    // 原有逻辑
+    else if (app === 'my-documents') {
+      openAppWindow('my-documents');
+    } else if (app === 'ambiguity-gap') {
+      // 检查是否已选角色
+      const selected = localStorage.getItem('ambiguity-gap:selected-character');
+      if (selected) {
+        window.open('./ambiguity-gap.html', '_blank');
+      } else {
+        alert('请先在“进程选择器”中选择一个角色！');
+      }
+    } else {
+      alert(`打开 ${item.textContent}...`);
+    }
+  });
+});
+
+  // 全局关闭按钮
+  document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('window-close')) {
+      const win = e.target.closest('.app-window');
+      if (win) win.classList.add('hidden');
+    }
+  });
+}
+
+
+
+// ========== 我的电脑初始化 ==========
+function initMyComputer() {
+  // 暂时留空，后续可添加逻辑
+  console.log("✅ My Computer initialized");
+}
+ function initMyDocuments() {
+  // 暂时留空，后续可添加逻辑
+  console.log("✅ My Documents initialized");
+}
+  // ========== 开始菜单 ==========
+  function initStartMenu() {
+    const startButton = document.querySelector('.start-button');
+    const startMenu = document.getElementById('start-menu');
+    let isOpen = false;
+
+    if (!startButton || !startMenu) return;
+
+    const toggleMenu = (e) => {
+      e.stopPropagation();
+      if (isOpen) {
+        startMenu.classList.add('hidden');
+        isOpen = false;
+      } else {
+        startMenu.classList.remove('hidden');
+        isOpen = true;
+      }
+    };
+
+    const closeMenu = () => {
+      if (isOpen) {
+        startMenu.classList.add('hidden');
+        isOpen = false;
+      }
+    };
+
+    // 绑定事件
+    startButton.removeEventListener('click', toggleMenu);
+    startButton.addEventListener('click', toggleMenu);
+
+    document.removeEventListener('click', closeMenu);
+    document.addEventListener('click', closeMenu);
+
+    startMenu.removeEventListener('click', (e) => e.stopPropagation());
+    startMenu.addEventListener('click', (e) => e.stopPropagation());
+
+  }
+
+  // ========== Window 消息关闭 ==========
+  const msgClose = document.getElementById('msg-close');
+  if (msgClose) {
+    msgClose.addEventListener('click', () => {
+      document.getElementById('window-message').classList.add('hidden');
+    });
+  }
+
+  // ========== 骨骼名称中文化功能初始化 ==========
+
+  // C. 初始化时读取用户自定义映射
+  const savedCustomMapping = localStorage.getItem('custom-bone-mappings');
+  if (savedCustomMapping) {
+    try {
+      const custom = JSON.parse(savedCustomMapping);
+      // 合并到默认映射表
+      Object.assign(BONE_NAME_TRANSLATIONS, custom);
+    } catch (e) {
+      console.warn('⚠️ 自定义骨骼映射表加载失败:', e);
+    }
+  }
+
+  // 读取中文化开关状态
+  const savedPref = localStorage.getItem('useChineseBoneNames');
+  if (savedPref === 'true') {
+    useChineseBoneNames = true;
+    const toggleEl = document.getElementById('chinese-bone-names-toggle');
+    if (toggleEl) toggleEl.checked = true;
+  }
+
+  // B. 绑定“编辑映射表”按钮事件
+  document.getElementById('edit-mapping-btn')?.addEventListener('click', () => {
+    const currentMapping = JSON.stringify(BONE_NAME_TRANSLATIONS, null, 2);
+    const newMappingStr = prompt(
+      '✏️ 编辑骨骼名称中文化映射表\n' +
+      '格式: {"原始骨骼名": "中文名", ...}\n' +
+      '注意：请保持有效的 JSON 格式！',
+      currentMapping
+    );
+    
+    if (newMappingStr) {
+      try {
+        const newMapping = JSON.parse(newMappingStr);
+        // 保存到 localStorage
+        localStorage.setItem('custom-bone-mappings', JSON.stringify(newMapping));
+        // 更新全局映射表
+        Object.assign(BONE_NAME_TRANSLATIONS, newMapping);
+        alert('✅ 骨骼映射表已更新并保存！');
+        // 刷新界面上所有现有滑块的标签
+        updateAllBoneLabels();
+      } catch (e) {
+        alert('❌ JSON 格式错误！\n请检查括号、引号是否匹配。\n错误: ' + e.message);
+      }
+    }
+  });
+
+  // 绑定中文化开关事件
+  document.getElementById('chinese-bone-names-toggle')?.addEventListener('change', (e) => {
+    useChineseBoneNames = e.target.checked;
+    localStorage.setItem('useChineseBoneNames', useChineseBoneNames.toString());
+    updateAllBoneLabels();
+  });
+  // >>>>> 【结束】 <<<<<
+
+  // ========== 启动终端动画 ==========
+  typeNextLine();
+
+// 发送消息
+document.getElementById('send-chat')?.addEventListener('click', () => {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (msg) {
+    alert(`Window 收到: "${msg}"`);
+    input.value = '';
+  }
+});
+
+// 启动裂隙
+document.getElementById('launch-gap')?.addEventListener('click', () => {
+  alert("《歧义裂隙》尚未完全加载……\nLiving OS 正在后台编译你的命运。");
+});
+
+// 关闭聊天窗口 + Window 回 idle
+document.getElementById('close-chat')?.addEventListener('click', () => {
+  document.getElementById('roommate-chat').classList.add('hidden');
+  setWindowState('idle');
+});
+// 在 DOMContentLoaded 回调末尾添加
+document.getElementById('msg-close')?.addEventListener('click', () => {
+  document.getElementById('window-message').classList.add('hidden');
+});
+
+// 绑定切换开关事件
+document.getElementById('chinese-bone-names-toggle')?.addEventListener('change', (e) => {
+  useChineseBoneNames = e.target.checked;
+  
+  // 可选：保存用户偏好到 localStorage
+  localStorage.setItem('useChineseBoneNames', useChineseBoneNames.toString());
+
+  // 立即更新所有现有滑块的标签
+  updateAllBoneLabels();
+});
+
+// ========== 进程选择器（E盘功能） ==========
+function openProcessSelector() {
+  const win = document.getElementById('process-selector-window');
+  const listEl = document.getElementById('character-list');
+
+  // 获取可用角色（初期固定，后续可动态）
+  const available = ['通用', 'Windown'];
+  
+  // 示例：如果已解锁赵雅懿（可通过 localStorage 判断）
+  if (localStorage.getItem('ambiguity-gap:unlocked-zhao')) {
+    available.push('赵雅懿');
+  }
+  if (localStorage.getItem('ambiguity-gap:unlocked-luolie')) {
+    available.push('逻裂体');
+  }
+
+  // 渲染单选按钮
+  listEl.innerHTML = '';
+  let first = true;
+  available.forEach(name => {
+    const label = document.createElement('label');
+    label.style.display = 'block';
+    label.style.margin = '6px 0';
+    label.innerHTML = `
+      <input type="radio" name="selected-char" value="${name}" ${first ? 'checked' : ''}>
+      ${name}
+    `;
+    listEl.appendChild(label);
+    first = false;
+  });
+
+  // 显示窗口
+  win.classList.remove('hidden');
+  bringToFront(win);
+  makeDraggable(win);
+
+  // 重新绑定按钮事件（避免重复）
+  document.getElementById('confirm-select-btn').onclick = () => {
+    const selected = document.querySelector('input[name="selected-char"]:checked');
+    if (selected) {
+      const char = selected.value;
+      localStorage.setItem('ambiguity-gap:selected-character', char);
+      localStorage.setItem('ambiguity-gap:trust', '50');
+      alert(`✅ 主进程已设为：${char}\n现在可启动《歧义裂隙》！`);
+    }
+    win.classList.add('hidden');
+  };
+
+  document.getElementById('cancel-select-btn').onclick = () => {
+    win.classList.add('hidden');
+  };
+}
+
+
+// ========== 3D Window 舍友 ==========
+function initWindow3D() {
+  const container = document.getElementById('window-3d-container');
+  container.classList.remove('hidden');
+  container.innerHTML = ''; // 清空
+
+  const scene = new THREE.Scene();
+  const aspect = window.innerWidth / window.innerHeight;
+  const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  // 光照
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(1, 1, 1).normalize();
+  scene.add(dirLight);
+
+  // 自适应
+  function onResize() {
+    const size = Math.min(window.innerWidth, window.innerHeight) * 0.25;
+    const width = size * 1.5;
+    const height = size * 1.5;
+    renderer.setSize(width, height);
+    renderer.domElement.style.width = width + 'px';
+    renderer.domElement.style.height = height + 'px';
+    container.style.width = width + 'px';
+    container.style.height = height + 'px';
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  }
+
+  window.addEventListener('resize', onResize);
+  onResize();
+
+  container.appendChild(renderer.domElement);
+
+  // 保存全局引用
+  window.window3D = { scene, camera, renderer, container };
+
+  // 👇 关键：启动空场景动画（等待模型加载）
+  startAnimationLoop(scene, camera, renderer, null);
+
+  // 👇 加载默认舍友
+  loadRoommate(currentRoommateId);
+}
+
+
+// ========== Window 实体 - 可拖动舍友 ==========
+(function() {
+  let isDragging = false;
+  let offsetX, offsetY;
+
+  function initWindowAgent() {
+    const agent = document.getElementById('window-agent');
+    if (!agent) return;
+
+    agent.classList.remove('hidden');
+    setWindowState('idle');
+
+    // 设置默认位置：右下角床位
+    function setDefaultPosition() {
+      const x = window.innerWidth - 120;   // 距离右边 120px
+      const y = window.innerHeight * 0.82; // 床位高度
+      agent.style.left = x + 'px';
+      agent.style.top = y + 'px';
+    }
+
+    setDefaultPosition();
+    // 点击 Window 显示气泡
+  agent.addEventListener('click', (e) => {
+  if (agent.classList.contains('away')) return;
+
+  const bubble = document.getElementById('window-bubble');
+  if (!bubble) return;
+
+  // 计算气泡位置（在 Window 左上方）
+  const agentRect = agent.getBoundingClientRect();
+  const bubbleX = agentRect.left - 150; // 左侧偏移
+  const bubbleY = agentRect.top - 80;   // 上方偏移
+
+  // 边界保护：不能超出屏幕
+  const finalX = Math.max(10, Math.min(bubbleX, window.innerWidth - 160));
+  const finalY = Math.max(10, Math.min(bubbleY, window.innerHeight - 120));
+
+  bubble.style.left = finalX + 'px';
+  bubble.style.top = finalY + 'px';
+  bubble.classList.remove('hidden');
+
+  // 阻止冒泡
+  e.stopPropagation();
+  });
+
+    // 拖动开始
+    agent.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      const rect = agent.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      agent.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    // 拖动中
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      // 限制范围：不能拖到屏幕外 or 天花板
+      const minX = 0;
+      const maxX = window.innerWidth - agent.offsetWidth;
+      const minY = window.innerHeight * 0.3; // 地面（30%）
+      const maxY = window.innerHeight * 0.9; // 天花板（90%）
+
+      let x = e.clientX - offsetX;
+      let y = e.clientY - offsetY;
+
+      x = Math.max(minX, Math.min(x, maxX));
+      y = Math.max(minY, Math.min(y, maxY));
+
+      agent.style.left = x + 'px';
+      agent.style.top = y + 'px';
+    });
+
+    // 拖动结束
+    const stopDrag = () => {
+      if (isDragging) {
+        isDragging = false;
+        agent.style.cursor = 'grab';
+      }
+    };
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('mouseleave', stopDrag);
+
+    // 窗口缩放时重置床位（可选）
+    window.addEventListener('resize', setDefaultPosition);
+  }
+
+  function setWindowState(state) {
+  const agent = document.getElementById('window-agent');
+  if (!agent) return;
+
+  // 清除状态类
+  agent.className = 'window-agent';
+  const face = agent.querySelector('.window-face');
+  if (!face) return;
+
+  // 控制 3D 容器
+  const container3D = document.getElementById('window-3d-container');
+
+  if (state === 'away') {
+    agent.classList.add('away');
+    // 隐藏 3D
+    if (container3D) {
+      container3D.style.opacity = '0';
+      container3D.style.pointerEvents = 'none';
+    }
+  } else {
+    // idle / walking / talking
+    agent.classList.add(state || 'idle');
+    
+    // 显示 3D
+    if (container3D) {
+      container3D.style.opacity = '1';
+      container3D.style.pointerEvents = 'none';
+    }
+
+    // 设置对应表情
+    if (state === 'walking') {
+      face.innerHTML = `<path d="M6 12 L10 12 M14 12 L18 12" stroke="#333" stroke-width="2"/><path d="M9 16 Q12 17 15 16" fill="none" stroke="#333" stroke-width="1.5"/>`;
+    } else if (state === 'talking') {
+      face.innerHTML = `<circle cx="9" cy="10" r="2" fill="#333"/><circle cx="15" cy="10" r="2" fill="#333"/><path d="M9 16 Q12 18 15 16" fill="none" stroke="#333" stroke-width="1.5"/>`;
+    } else {
+      face.innerHTML = `<path d="M6 12 L10 12 M14 12 L18 12" stroke="#333" stroke-width="2"/><path d="M9 16 Q12 17 15 16" fill="none" stroke="#333" stroke-width="1.5"/>`;
+    }
+  }
+}
+
+  // 随机离开
+  function scheduleRandomAway() {
+    if (Math.random() > 0.6) {
+      setWindowState('away');
+      setTimeout(() => {
+        if (document.getElementById('window-agent')?.classList.contains('away')) {
+          setWindowState('idle');
+        }
+      }, 30000);
+    }
+  }
+
+  // === 暴露到全局 ===
+  window.setWindowState = setWindowState; // 👈 关键！
+  window.showWindowAgent = function() {
+    initWindowAgent();
+    setTimeout(scheduleRandomAway, 5000);
+  };
+})();
+
+// 点击外部关闭气泡
+document.addEventListener('click', (e) => {
+  const bubble = document.getElementById('window-bubble');
+  if (bubble && !bubble.classList.contains('hidden') && !bubble.contains(e.target)) {
+    bubble.classList.add('hidden');
+  }
+});
+
+// 气泡选项处理器
+document.querySelectorAll('#window-bubble .bubble-options li').forEach(li => {
+  li.addEventListener('click', () => {
+    const action = li.getAttribute('data-action');
+    if (action === 'chat') {
+      document.getElementById('roommate-chat').classList.remove('hidden');
+        if (chatWin) {
+          chatWin.classList.remove('hidden');
+          setWindowState('talking');
+        } else {
+          console.error("❌ 聊天窗口 #roommate-chat 未找到！");
+        }
+    } else if (action === 'move-to-window') {
+      moveToWindowSide();
+    }
+    // 关闭气泡
+    document.getElementById('window-bubble').classList.add('hidden');
+  });
+});
+
+function moveToWindowSide() {
+  const agent = document.getElementById('window-agent');
+  if (!agent) return;
+
+  // 开始行走动画
+  setWindowState('walking'); // 新增 walking 状态
+
+  const startX = parseFloat(agent.style.left) || 0;
+  const startY = parseFloat(agent.style.top) || 0;
+  const targetX = window.innerWidth - 120;
+  const targetY = window.innerHeight * 0.82;
+
+  const duration = 1200; // 1.2秒
+  const startTime = performance.now();
+
+  function animate(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // 缓动函数（ease-out）
+    const easeProgress = 1 - Math.pow(1 - progress, 2);
+
+    const x = startX + (targetX - startX) * easeProgress;
+    const y = startY + (targetY - startY) * easeProgress;
+
+    agent.style.left = x + 'px';
+    agent.style.top = y + 'px';
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // 到达后停止行走
+      setWindowState('idle');
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function bringToFront(windowElement) {
+  const allWindows = document.querySelectorAll('.app-window');
+  let maxZ = 100;
+  allWindows.forEach(w => {
+    const z = parseInt(getComputedStyle(w).zIndex) || 100;
+    if (z > maxZ) maxZ = z;
+  });
+  windowElement.style.zIndex = maxZ + 10;
+}
+
+function makeDraggable(element) {
+  const titleBar = element.querySelector('.window-titlebar');
+  if (!titleBar) return;
+  let isDragging = false, offsetX, offsetY;
+  titleBar.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    offsetX = e.clientX - element.getBoundingClientRect().left;
+    offsetY = e.clientY - element.getBoundingClientRect().top;
+    element.style.opacity = '0.9';
+    bringToFront(element);
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    element.style.left = Math.max(0, e.clientX - offsetX) + 'px';
+    element.style.top = Math.max(0, e.clientY - offsetY) + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    element.style.opacity = '1';
+  });
+}
+
+// ========== 扩展后的姿势编辑器 ==========
+function openPoseEditor() {
+  const win = document.getElementById('pose-editor-window');
+  if (!win) return;
+  win.classList.remove('hidden');
+  bringToFront(win);
+  makeDraggable(win);
+
+  // 清空动态控件
+  activeBoneControls = [];
+  document.getElementById('dynamic-sliders').innerHTML = '';
+
+  // 填充骨骼选择器
+  const boneSelect = document.getElementById('bone-selector');
+  boneSelect.innerHTML = '';
+  if (window.fullSkeleton) {
+    window.fullSkeleton.forEach(bone => {
+      if (bone.name && !bone.name.includes('IK')) {
+        const opt = document.createElement('option');
+        opt.value = bone.name;
+        opt.textContent = bone.name;
+        boneSelect.appendChild(opt);
+      }
+    });
+  }
+
+  // ========== 关键修复：更新相机滑块为 X/Y/Z ==========
+  if (typeof cameraPosition !== 'undefined') {
+    document.getElementById('cam-x').value = cameraPosition.x;
+    document.getElementById('cam-y').value = cameraPosition.y;
+    document.getElementById('cam-z').value = cameraPosition.z;
+    updateCameraDisplay(); // 刷新显示值
+  }
+}
+
+// ========== 在 DOMContentLoaded 回调末尾绑定新事件 ==========
+
+// ========== 舍友切换 ==========
+document.querySelectorAll('.roommate-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.id;
+    
+    // 更新激活状态
+    document.querySelectorAll('.roommate-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    // 加载舍友
+    loadRoommate(id);
+  });
+});
+
+// ✅【修复 + 增强】姿势编辑器：重置 (兼容旧版 + 安全检查 + 相机重置)
+document.getElementById('pose-reset-btn')?.addEventListener('click', () => {
+  // 1. 重置旧版滑块（如果存在）
+  const sliders = [
+    'pe-l-shoulder-y', 'pe-r-shoulder-y',
+    'pe-l-arm-x', 'pe-r-arm-x',
+    'pe-l-arm-z', 'pe-r-arm-z'
+  ];
+  sliders.forEach(id => {
+    const sliderEl = document.getElementById(id);
+    if (sliderEl) {
+      sliderEl.value = '0';
+    }
+  });
+  updatePoseDisplay();
+  applyPoseToBones({
+    lShoulderY: 0, rShoulderY: 0,
+    lArmX: 0, rArmX: 0,
+    lArmZ: 0, rArmZ: 0
+  });
+
+  // 2. 【新增】重置新版姿势和相机
+  resetFullPose(); // 这个函数已经包含了重置骨骼和相机的逻辑
+});
+
+// 滑块实时更新 (兼容旧版)
+['l-shoulder-y', 'r-shoulder-y', 'l-arm-x', 'r-arm-x', 'l-arm-z', 'r-arm-z'].forEach(key => {
+  document.getElementById(`pe-${key}`)?.addEventListener('input', () => {
+    updatePoseDisplay();
+    const pose = {
+      lShoulderY: document.getElementById('pe-l-shoulder-y').value,
+      rShoulderY: document.getElementById('pe-r-shoulder-y').value,
+      lArmX: document.getElementById('pe-l-arm-x').value,
+      rArmX: document.getElementById('pe-r-arm-x').value,
+      lArmZ: document.getElementById('pe-l-arm-z').value,
+      rArmZ: document.getElementById('pe-r-arm-z').value
+    };
+    applyPoseToBones(pose);
+  });
+});
+
+// ========== 新增：姿势驱动器事件 ==========
+document.getElementById('add-bone-control')?.addEventListener('click', addBoneControl);
+document.getElementById('pose-save-btn')?.addEventListener('click', saveFullPose);
+document.getElementById('pose-reset-btn')?.addEventListener('click', resetFullPose);
+
+// ========== 相机控制事件绑定 ==========
+// 自动绑定所有相机控制（无论滑块还是输入框）
+['x', 'y', 'z'].forEach(axis => {
+  const slider = document.getElementById(`cam-${axis}`);
+  const input = document.getElementById(`cam-${axis}-input`);
+  
+  const updateCamera = (value) => {
+    globalWindow.cameraPosition[axis] = parseFloat(value);
+    updateCameraDisplay();
+    updateCameraPosition();
+  };
+
+  if (slider) {
+    slider.addEventListener('input', e => updateCamera(e.target.value));
+  }
+  if (input) {
+    // 手机用 'change' 避免频繁触发（或用 'input' 实时）
+    input.addEventListener('change', e => updateCamera(e.target.value));
+  }
+});
+
+updateCameraDisplay();
+
+}); // End of DOMContentLoaded
+
+
+function showInstallHint() {
+  const hint = document.getElementById('install-hint');
+  if (hint) {
+    hint.classList.remove('hidden');
+  }
+}
+
+document.getElementById('install-btn')?.addEventListener('click', () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('用户已安装 PWA');
+      }
+      deferredPrompt = null;
+      document.getElementById('install-hint').classList.add('hidden');
+    });
+  }
+});
+
+document.getElementById('dismiss-install')?.addEventListener('click', () => {
+  document.getElementById('install-hint').classList.add('hidden');
+});
+
+// 检测是否为受限环境
+function checkBrowserSupport() {
+  const ua = navigator.userAgent;
+  const isWechat = /MicroMessenger/i.test(ua);
+  const isQQ = /QQ\//i.test(ua);
+  const isOldSamsung = /SamsungBrowser\/[1-9]\./i.test(ua);
+
+  if (isWechat || isQQ || isOldSamsung) {
+    document.getElementById('browser-warning')?.classList.remove('hidden');
+  }
+}
+
+// 在 DOMContentLoaded 中调用
+checkBrowserSupport();
+
+// ========== 兼容旧版函数 ==========
+function updatePoseDisplay() {
+  // 可为空或保留占位符，如果旧版UI还在用
+}
+
+
+function applyPoseToBones(pose) {
+  if (!windowBones) return;
+  if (windowBones.leftShoulder) windowBones.leftShoulder.rotation.y = pose.lShoulderY * (Math.PI / 180);
+  if (windowBones.rightShoulder) windowBones.rightShoulder.rotation.y = pose.rShoulderY * (Math.PI / 180);
+  if (windowBones.leftUpperArm) windowBones.leftUpperArm.rotation.x = pose.lArmX * (Math.PI / 180);
+  if (windowBones.rightUpperArm) windowBones.rightUpperArm.rotation.x = pose.rArmX * (Math.PI / 180);
+  if (windowBones.leftUpperArm) windowBones.leftUpperArm.rotation.z = pose.lArmZ * (Math.PI / 180);
+  if (windowBones.rightUpperArm) windowBones.rightUpperArm.rotation.z = pose.rArmZ * (Math.PI / 180);
+}
+
+// 暴露调试接口
+globalWindow.cameraPosition = cameraPosition;
+globalWindow.activeBoneControls = activeBoneControls;
+globalWindow.updateCameraPosition = updateCameraPosition;
+globalWindow.saveFullPose = saveFullPose;
+globalWindow.resetFullPose = resetFullPose;
+
+console.log("✅ main.js loaded successfully");
+window.mainLoaded = true;

@@ -3,15 +3,15 @@
 > 一个会走路、会聊天、会蓝屏的数字舍友 —— **Window**  
 > 她住在你的操作系统里，等待与你相识。
 
-![AmbiguityOS Screenshot](screenshot.png)
+![AmbiguityOS Screenshot](assets/images/screenshot.png)
 
 ## 🌐 在线体验
 
 👉 [https://os.my-roommate.xyz/]
 
-> ⚠️ 首次加载可能稍慢（音频/图片资源较多），请耐心等待“开机”完成。
-> ⚠️ 浏览器不支持 WebGL 时将无法正常显示。
-> ⚠️ 浏览器不支持 WebSocket 时将无法正常聊天。
+-> ⚠️ 首次加载可能稍慢（音频/图片资源较多），请耐心等待“开机”完成。
+-> ⚠️ 浏览器不支持 WebGL 时将无法正常显示。
+-> ⚠️ 浏览器不支持 WebSocket 时将无法正常聊天。
 
 ## 💻 Window的介绍
 
