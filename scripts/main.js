@@ -423,6 +423,7 @@ function updateCameraPosition() {
 }
 
 function addBoneControl() {
+  console.log('addBoneControl called');
   if (activeBoneControls.length >= MAX_CONTROLS) {
     alert(`最多只能控制 ${MAX_CONTROLS} 个骨骼！`);
     return;
@@ -443,12 +444,25 @@ function addBoneControl() {
   const id = `bone-${Date.now()}`;
   activeBoneControls.push({ boneName, axis, id });
 
-  const { div, input, removeBtn } = createSliderGroup(boneName, axis, 0, id);
+ const { div, slider, numeric, removeBtn } = createSliderGroup(boneName, axis, 0, id);
 
-  input.addEventListener('input', () => {
-    updateBoneDisplay(id);
-    applyAllBoneControls();
-  });
+// === 同步滑块 → 数字框 ===
+slider.addEventListener('input', () => {
+  numeric.value = slider.value;
+  updateBoneDisplay(id);
+  applyAllBoneControls();
+});
+
+// === 同步数字框 → 滑块 ===
+numeric.addEventListener('change', () => {
+  let val = parseFloat(numeric.value);
+  if (isNaN(val)) val = 0;
+  val = Math.max(-3.14, Math.min(3.14, val));
+  slider.value = val;
+  numeric.value = val.toFixed(2);
+  updateBoneDisplay(id);
+  applyAllBoneControls();
+});
 
   removeBtn.addEventListener('click', (e) => {
     e.preventDefault();
