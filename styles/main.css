@@ -1,3 +1,4 @@
+/* main.css */
 /* 全局重置 */
 * {
   margin: 0;
@@ -334,6 +335,11 @@ button:hover {
   letter-spacing: 2px;
 }
 
+.menu-header span {
+  display: inline;
+  white-space: nowrap;
+}
+
 .user-info {
   margin-top: 12px;
   font-size: 14px;
@@ -442,6 +448,26 @@ html, body {
   display: flex;
   flex-direction: column;
   z-index: 1000;
+  max-height: 80vh; /* 最大 80% 视口高度 */
+  overflow-y: auto; /* 默认允许滚动（安全） */
+}
+
+/* PC 上隐藏滚动条（视觉干净） */
+@media (min-width: 769px) {
+  .app-window {
+    scrollbar-width: none; /* Firefox */
+  }
+  .app-window::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+}
+
+/* 手机上保留滚动条（方便操作） */
+@media (max-width: 768px) {
+  .app-window {
+    scrollbar-width: thin;
+    /* WebKit 浏览器会自动显示，无需额外设置 */
+  }
 }
 
 .window-titlebar {

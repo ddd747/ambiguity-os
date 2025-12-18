@@ -813,6 +813,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   console.log('✅ Setup confirmed. Proceeding to boot...');
+
+  // 读取用户名（默认 fallback 到“舍友”）
+  const savedName = localStorage.getItem('ambiguityos:accountName') || '舍友';
+  // 替换开始菜单中的文本
+  document.querySelector('.start-menu .user-name').textContent = savedName;
   // <<< 【新增结束】 >>>
 
   // ========== 启动阶段 ==========
@@ -1042,7 +1047,23 @@ document.querySelectorAll('.menu-item').forEach(item => {
   item.addEventListener('click', (e) => {
     e.stopPropagation();
     const app = item.dataset.app;
-    
+    const action = item.dataset.action;
+
+    // 👇 新增：处理 re-setup
+    if (action === 're-setup') {
+      if (confirm('⚠️ 这将清除所有初始设置并重启安装向导。\n\n你的角色、姿势等数据不会丢失，但区域、壁纸、用户名会重置。\n\n继续？')) {
+        // 清除 setup 标记
+        localStorage.removeItem('ambiguityos:setup_completed');
+        // 可选：清除其他 setup 数据（保留角色等）
+        // localStorage.removeItem('ambiguityos:accountName');
+        // localStorage.removeItem('ambiguityos:wallpaper');
+        // ...
+        alert('即将重启安装向导...');
+        window.location.href = './setup-wizard.html';
+      }
+      return;
+    }
+
     // 新增：开始菜单统一入口
     if (app === 'downloads') {
       openAppWindow('downloads');

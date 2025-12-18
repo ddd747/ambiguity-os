@@ -34,13 +34,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// BIOS 步骤：任意键继续
-document.addEventListener('keydown', (e) => {
-  if (currentStep === 'bios') {
-    goToStep('dos');
-  }
-});
-
 // Win3.1：启用“下一步”按钮（当区域已选）
 document.getElementById('region-select').addEventListener('change', () => {
   const region = document.getElementById('region-select').value;

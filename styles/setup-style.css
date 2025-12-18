@@ -61,6 +61,37 @@ body.era-bios {
   font-size: 16px;
 }
 
+/* BIOS 内联按键（不闪烁，保持常亮） */
+body.era-bios .bios-inline-key {
+  /* 去掉默认按钮样式 */
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0 4px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: inherit;
+  color: #0f0; /* 绿色，和文本一致 */
+  text-decoration: underline;
+  outline: none;
+  display: inline;
+  vertical-align: baseline;
+}
+
+body.era-bios .bios-inline-key:hover {
+  color: #0ff; /* 鼠标悬停变青色（可选） */
+  text-shadow: 0 0 4px #0f0;
+}
+
+/* 确保 .prompt 的闪烁不影响按钮 */
+body.era-bios .prompt {
+  animation: blink 1s infinite;
+}
+
+/* 关键：阻止动画继承到按钮 */
+body.era-bios .bios-inline-key {
+  animation: none !important;
+}
 
 /* ==============================
    Step 1: MS-DOS (1981)
@@ -291,7 +322,7 @@ body.era-living {
   font-size: 14px;
   cursor: pointer;
   margin: 8px 4px;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
 }
 
 .living-btn:hover {
