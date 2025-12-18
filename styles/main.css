@@ -240,10 +240,10 @@ button:hover {
 
 /* === 任务栏 === */
 .taskbar {
-  position: absolute;
-  bottom: 0;
+  position: fixed; /* 👈 关键修改 */
+  bottom: env(safe-area-inset-bottom); /* 兼容 iPhone 底部安全区 */
   left: 0;
-  width: 100%;
+  width: 100%; /* 覆盖整个视口宽度 */
   height: 36px;
   background: linear-gradient(to bottom, #000080, #000040);
   display: flex;
@@ -251,6 +251,19 @@ button:hover {
   padding: 0 10px;
   box-shadow: 0 -2px 6px rgba(0,0,0,0.5);
   z-index: 20;
+}
+
+/* 任务栏窗口按钮 */
+#taskbar-windows button {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+#taskbar-windows button:hover {
+  background: #c0c0c0;
+}
+#taskbar-windows button:active {
+  background: #a0a0a0;
 }
 
 /* 开始按钮新样式 */
@@ -296,7 +309,7 @@ button:hover {
 
 /* === 开始菜单面板 === */
 .start-menu {
-  position: absolute;
+  position: fixed; /* 👈 必须是 fixed */
   bottom: 36px; /* 在任务栏上方 */
   left: 0;
   width: 400px;
@@ -304,7 +317,7 @@ button:hover {
   border: 2px solid #000;
   box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
   font-family: 'Microsoft Yahei', sans-serif;
-  z-index: 30;
+  z-index: 200;
   display: flex;
 }
 
@@ -716,19 +729,25 @@ html, body {
 
 .bubble-options {
   list-style: none;
-  padding: 0;
-  margin: 0;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 0 !important;
+  margin: 0 !important;;
 }
 
 .bubble-options li {
   padding: 6px 0;
   cursor: pointer;
   transition: color 0.2s;
+  white-space: nowrap;
+  cursor: pointer;
   -webkit-user-select: none; /* Safari */
   -moz-user-select: none;    /* Firefox */
   -ms-user-select: none;     /* IE10+ */
   user-select: none;         /* Standard */
-
 }
 
 .bubble-options li:hover {
@@ -832,6 +851,43 @@ html, body {
 .window-3d-container canvas {
   border: 2px solid #00a0e9; /* Windows 蓝 */
   border-radius: 4px;
+}
+
+/* ========== 独立窗口容器 ========== */
+.window-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 不拦截鼠标事件 */
+  z-index: 999; /* 基础层级 */
+}
+
+.window-container:not(.hidden) {
+  pointer-events: auto; /* 显示时启用交互 */
+}
+
+/* 容器内的窗口使用绝对定位（可拖动） */
+.window-container .app-window {
+  position: absolute; /* ← 关键：不再是 fixed */
+  top: 100px;         /* 默认位置 */
+  left: 100px;
+  transform: none;    /* ← 关键：移除居中 transform */
+  width: 90vw;
+  max-width: 600px;
+  height: auto;       /* 允许高度自适应 */
+  min-height: 300px;
+}
+
+/* 紧凑型窗口：用于 E 盘、网络邻居等小窗口 */
+.app-window.compact-window {
+  position: absolute; /* ← 关键：不再是 fixed */
+  width: auto !important;
+  max-width: 360px !important;
+  height: auto !important;     /* ← 允许高度自适应 */
+  min-height: auto !important;
+  box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
 }
 
 /* ========== 3D 舍友容器（固定右下角，响应式大小） ========== */
@@ -969,4 +1025,17 @@ body {
   font-size: 18px !important; /* 确保 iOS 不放大 */
   border: 1px solid #888;
   border-radius: 4px;
+}
+
+/* 手机横屏：4 图标 2x2 布局 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .desktop-icons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    justify-items: center;
+  }
+  .icon {
+    width: auto;
+  }
 }

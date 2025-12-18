@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -26,58 +27,63 @@
 </head>
 
 <!-- 我的电脑窗口 -->
-<div id="my-computer-window" class="app-window hidden">
-  <div class="window-titlebar">
-    <span>我的电脑</span>
-    <button class="window-close" data-target="my-computer-window">×</button>
-  </div>
-  <div class="window-content">
-    <div class="drive-list">
-      <div class="drive-item" data-drive="a">3.5 英寸软盘 (A:)</div>
-      <div class="drive-item drive-c"data-drive="c">本地磁盘 (C:)</div>
-      <div class="drive-item"data-drive="d">DVD 驱动器 (D:)</div>
-      <div class="drive-item"data-drive="e">AmbiguityOS (E:)</div>
+<div id="my-computer-window" class="window-container hidden">
+  <div class="app-window">
+    <div class="window-titlebar">
+      <span>我的电脑</span>
+      <button class="window-close" data-target="my-computer-window">×</button>
     </div>
-    <div class="system-info">
-      <p>处理器：Living Core v1.0</p>
-      <p>内存：∞ MB（与你共享）</p>
+    <div class="window-content">
+      <div class="drive-list">
+        <div class="drive-item" data-drive="a">3.5 英寸软盘 (A:)</div>
+        <div class="drive-item drive-c" data-drive="c">本地磁盘 (C:)</div>
+        <div class="drive-item" data-drive="d">DVD 驱动器 (D:)</div>
+        <div class="drive-item" data-drive="e">AmbiguityOS (E:)</div>
+      </div>
+      <div class="system-info">
+        <p>处理器：Living Core v1.0</p>
+        <p>内存：∞ MB（与你共享）</p>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- 回收站窗口 -->
-<div id="recycle-bin-window" class="app-window hidden">
-  <div class="window-titlebar">
-    <span>回收站</span>
-    <button class="window-close" data-target="recycle-bin-window">×</button>
-  </div>
-  <div class="window-content recycle-content">
-    <p style="text-align:center; color:#666; padding-top:40px;">
-      回收站是空的。
-    </p>
-    <!-- 未来可在这里显示“被删除的记忆碎片” -->
+<div id="recycle-bin-window" class="window-container hidden">
+  <div class="app-window">
+    <div class="window-titlebar">
+      <span>回收站</span>
+      <button class="window-close" data-target="recycle-bin-window">×</button>
+    </div>
+    <div class="window-content recycle-content">
+      <p style="text-align:center; color:#666; padding-top:40px;">
+        回收站是现在空的。
+      </p>
+    </div>
   </div>
 </div>
 
 <!-- Internet Explorer 窗口 -->
-<div id="ie-window" class="app-window hidden">
-  <div class="window-titlebar ie-titlebar">
-    <span>Internet Explorer</span>
-    <button class="window-close" data-target="ie-window">×</button>
-  </div>
-  <div class="ie-toolbar">
-    <button class="ie-btn">←</button>
-    <button class="ie-btn">→</button>
-    <button class="ie-btn">↻</button>
-    <input type="text" value="about:blank" class="ie-address" placeholder="输入网址">
-  </div>
-  <div class="window-content ie-content">
-    <div class="ie-logo">e</div>
-    <p>无法显示网页</p>
-    <p>Living OS 未连接外部网络。</p>
-    <p style="margin-top:20px; font-size:12px; color:#666;">
-      提示：本系统仅支持本地共生协议。
-    </p>
+<div id="ie-window" class="window-container hidden">
+  <div class="app-window">
+    <div class="window-titlebar ie-titlebar">
+      <span>Internet Explorer</span>
+      <button class="window-close" data-target="ie-window">×</button>
+    </div>
+    <div class="ie-toolbar">
+      <button class="ie-btn">←</button>
+      <button class="ie-btn">→</button>
+      <button class="ie-btn">↻</button>
+      <input type="text" value="about:blank" class="ie-address" placeholder="输入网址">
+    </div>
+    <div class="window-content ie-content">
+      <div class="ie-logo">e</div>
+      <p>无法显示网页</p>
+      <p>Living OS 未连接外部网络。</p>
+      <p style="margin-top:20px; font-size:12px; color:#666;">
+        提示：本系统仅支持本地共生协议。
+      </p>
+    </div>
   </div>
 </div>
 
@@ -168,7 +174,27 @@
     </div>
     <span>Internet Explorer</span>
   </div>
-</div>
+
+  <!-- 在你的 .desktop-icons 中替换最后一项 -->
+  <div class="icon" data-app="network-neighbors">
+    <div class="icon-img">
+      <svg viewBox="0 0 48 48" width="48" height="48">
+        <!-- 左侧电脑 -->
+        <rect x="6" y="12" width="12" height="8" rx="1" fill="#4a90e2" stroke="#2a6bbd" stroke-width="1.5"/>
+        <rect x="10" y="8" width="4" height="4" rx="0.5" fill="#357abd"/>
+        <!-- 右侧电脑 -->
+        <rect x="30" y="12" width="12" height="8" rx="1" fill="#4a90e2" stroke="#2a6bbd" stroke-width="1.5"/>
+        <rect x="34" y="8" width="4" height="4" rx="0.5" fill="#357abd"/>
+        <!-- 连接线 -->
+        <path d="M18,16 L30,16" stroke="#5ab51a" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="24" cy="16" r="2" fill="#5ab51a"/>
+        <!-- 底部文件共享符号 -->
+        <path d="M16,28 L32,28 L32,36 L16,36 Z" fill="none" stroke="#7ed321" stroke-width="1.5"/>
+        <path d="M16,32 L32,32" stroke="#7ed321" stroke-width="1"/>
+      </svg>
+    </div>
+    <span>网络邻居</span>
+  </div>
 
   <!-- 任务栏 -->
 <div class="taskbar">
@@ -181,6 +207,10 @@
     </svg>
     <span>开始</span>
   </div>
+
+  <!-- 👇 新增：动态窗口按钮区 -->
+  <div id="taskbar-windows" style="display: flex; gap: 2px; align-items: center;"></div>
+
   <div class="clock" id="system-clock">00:00</div>
 </div>
 
@@ -269,77 +299,118 @@
 </div>
 
 <!-- 下载窗口 -->
-<div id="downloads-window" class="app-window hidden">
-  <div class="window-titlebar">
-    🛂 下载
-    <span class="window-close">×</span>
-  </div>
-  <div class="window-content">
-    <p>新舍友会出现在这里。</p>
-    <p>双击 .exe 文件以添加舍友。</p>
-    <div id="downloads-list">
-      <!-- 动态生成 -->
-      <div class="folder-item disabled">暂无登记</div>
+<div id="downloads-window" class="window-container hidden">
+  <div class="app-window">
+    <div class="window-titlebar">
+      🛂 下载
+      <span class="window-close" data-target="downloads-window">×</span>
+    </div>
+    <div class="window-content">
+      <p>新舍友会出现在这里。</p>
+      <p>双击 .exe 文件以添加舍友。</p>
+      <div id="downloads-list">
+        <!-- 动态生成 -->
+        <div class="folder-item disabled">目前暂无登记哦！@w@</div>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- 我的文档窗口 -->
-<div id="documents-window" class="app-window hidden">
-  <div class="window-titlebar">
-    📄 我的文档
-    <span class="window-close">×</span>
-  </div>
-  <div class="window-content">
-    <p>技能说明、日志、配置文件存放于此。</p>
-    <ul>
-      <li><a href="#" onclick="openSkillDoc('current')">📄 当前角色技能说明.txt</a></li>
-      <li>📝 session.log</li>
-      <li>⚙️ preferences.ini</li>
-    </ul>
+<div id="documents-window" class="window-container hidden">
+  <div class="app-window">
+    <div class="window-titlebar">
+      📄 我的文档
+      <span class="window-close" data-target="documents-window">×</span>
+    </div>
+    <div class="window-content">
+      <p>技能说明、日志、配置文件存放于此。</p>
+      <ul>
+        <li><a href="#" onclick="openSkillDoc('current')">📄 当前角色技能说明.txt</a></li>
+        <li>📝 session.log</li>
+        <li>⚙️ preferences.ini</li>
+      </ul>
+    </div>
   </div>
 </div>
 
 <!-- 音乐窗口 -->
-<div id="music-window" class="app-window hidden">
-  <div class="window-titlebar">
-    🎵 音乐
-    <span class="window-close">×</span>
-  </div>
-  <div class="window-content">
-    <p>背景音乐随角色 HP% 变化音量。</p>
-    <button onclick="uploadBGM()">上传本地音频</button>
-    <div id="bgm-status">未设置自定义 BGM</div>
+<div id="music-window" class="window-container hidden">
+  <div class="app-window">
+    <div class="window-titlebar">
+      🎵 音乐
+      <span class="window-close" data-target="music-window">×</span>
+    </div>
+    <div class="window-content">
+      <p>背景音乐会随角色 HP% 变化音量的哦。</p>
+      <button onclick="uploadBGM()">上传本地音频</button>
+      <div id="bgm-status">未设置自定义 BGM</div>
+    </div>
   </div>
 </div>
 
 <!-- 视频窗口 -->
-<div id="videos-window" class="app-window hidden">
-  <div class="window-titlebar">
-    🎬 视频
-    <span class="window-close">×</span>
-  </div>
-  <div class="window-content">
-    <p>实时状态监控面板</p>
-    <div id="status-monitor">
-      <p>当前角色：<span id="monitor-char">未选择</span></p>
-      <p>回合数：<span id="monitor-turn">--</span></p>
+<div id="videos-window" class="window-container hidden">
+  <div class="app-window">
+    <div class="window-titlebar">
+      🎬 视频
+      <span class="window-close" data-target="videos-window">×</span>
+    </div>
+    <div class="window-content">
+      <p>实时状态监控面板</p>
+      <div id="status-monitor">
+        <p>当前角色：<span id="monitor-char">未选择</span></p>
+        <p>回合数：<span id="monitor-turn">--</span></p>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- 进程选择器窗口 -->
-<div id="process-selector-window" class="app-window hidden" style="width: 320px; height: auto; min-height: 200px;">
-  <div class="window-titlebar" style="background: linear-gradient(to bottom, #000080, #000040); color: white; padding: 4px 8px; font-weight: bold;">
-    进程选择器
-    <span class="window-close" data-target="process-selector-window">×</span>
+<div id="process-selector-container" class="window-container hidden">
+  <!-- 👇 关键：添加 class="compact-window" -->
+  <div class="app-window compact-window">
+    <div class="window-titlebar" style="background: linear-gradient(to bottom, #000080, #000040); color: white; padding: 4px 8px; font-weight: bold;">
+      进程选择器
+      <span class="window-close">×</span>
+    </div>
+    <div class="window-content" style="padding: 16px; background: #c0c0c0; font-family: 'Microsoft YaHei', sans-serif;">
+      <p>请选择一个主角色：</p>
+      <div id="character-list" style="margin: 10px 0;"></div>
+      <div style="text-align: right; margin-top: 12px;">
+        <button id="confirm-select-btn" style="width: 70px; background: #d4d0c8; border: 1px solid #000; padding: 3px 8px; cursor: pointer;">确定</button>
+        <button id="cancel-select-btn" style="width: 70px; background: #d4d0c8; border: 1px solid #000; padding: 3px 8px; cursor: pointer;">取消</button>
+      </div>
+    </div>
   </div>
-  <div class="window-content" style="padding: 16px; background: #c0c0c0; font-family: 'Microsoft YaHei', sans-serif;">
-    <p>请选择一个主角色：</p>
-    <div id="character-list" style="margin: 10px 0;"></div>
-    <div style="text-align: right; margin-top: 12px;">
-      <button id="confirm-select-btn" style="width: 70px; background: #d4d0c8; border: 1px solid #000; padding: 3px 8px; cursor: pointer;">确定</button>
-      <button id="cancel-select-btn" style="width: 70px; background: #d4d0c8; border: 1px solid #000; padding: 3; cursor: pointer;">取消</button>
+</div>
+
+<!-- 网络邻居窗口 -->
+<div id="network-neighbors-window" class="window-container hidden">
+  <div class="app-window" style="width: 360px; height: auto; min-height: 220px;">
+    <div class="window-titlebar" style="background: linear-gradient(to bottom, #008000, #004000); color: white; padding: 4px 8px; font-weight: bold;">
+      网络邻居
+      <span class="window-close" data-target="network-neighbors-window">×</span>
+    </div>
+    <div class="window-content" style="padding: 16px; background: #c0c0c0; font-family: 'Microsoft YaHei', sans-serif;">
+      <p>在局域网中查找《歧义裂隙》房间：</p>
+      
+      <div style="margin: 12px 0;">
+        <button id="create-room-btn" style="width: 100%; background: #d4d0c8; border: 1px solid #000; padding: 6px; margin-bottom: 8px;">
+          🆕 创建新房间
+        </button>
+        
+        <div style="display: flex; gap: 6px; margin-top: 8px;">
+          <input type="text" id="join-room-id" placeholder="输入房间ID" style="flex:1; padding: 4px; border: 1px solid #888;">
+          <button id="join-room-btn" style="width: 80px; background: #d4d0c8; border: 1px solid #000; padding: 4px;">
+            加入
+          </button>
+        </div>
+      </div>
+      
+      <p style="font-size: 12px; color: #555; margin-top: 12px;">
+        💡 房间ID 可通过聊天、短信等方式分享给队友。
+      </p>
     </div>
   </div>
 </div>
@@ -348,10 +419,11 @@
 <!-- 3D Window 舍友容器 -->
 <div id="window-3d-container" class="window-3d-container hidden"></div>
 <!-- Window 姿势驱动器 (D:) -->
-<div id="pose-editor-window" class="app-window hidden">
+<div id="pose-editor-container" class="window-container hidden">
+  <div class="app-window">
   <div class="window-titlebar">
     Window 姿势驱动器 (D:)
-    <span class="window-close">×</span>
+    <span class="window-close" data-target="pose-editor-container">×</span>
   </div>
   <div class="window-content">
     <p>调整骨骼参数以校准 Window 的肢体协议。</p>
@@ -412,6 +484,7 @@
         <button class="roommate-btn" data-id="yinian">［意念］</button>
       </div>
     </div>
+  </div>
   </div>
 </div>
 </body>

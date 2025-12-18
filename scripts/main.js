@@ -51,12 +51,33 @@ globalWindow.THREE = THREE;
 let blinkTimer = 0;
 const clock = new THREE.Clock();
 
+// 全局变量：用于记录 D 盘的事件监听器，便于清理
+let poseEditorActiveListeners = [];
+
 // 全局变量：是否可安装 PWA
 let deferredPrompt = null;
 let isPWAInstallable = false;
 
 let windowBones = null;
 let window3D = null; // 存储场景、相机、渲染器等
+
+
+  function bringToFront(windowElement) {
+  const allWindows = document.querySelectorAll('.app-window');
+  let maxZ = 100;
+  allWindows.forEach(w => {
+    const z = parseInt(getComputedStyle(w).zIndex) || 100;
+    if (z > maxZ) maxZ = z;
+  });
+  windowElement.style.zIndex = maxZ + 10;
+}
+
+// 在每个窗口打开时调用
+document.getElementById('open-pose-editor')?.addEventListener('click', () => {
+  const win = document.getElementById('pose-editor-window');
+  win.classList.remove('hidden');
+  bringToFront(win); // 👈 关键
+});
 
 // ===== 新增：姿势驱动器状态 =====
 const MAX_CONTROLS = 6;
@@ -307,23 +328,26 @@ function createSliderGroup(boneName, axis, value, id) {
 }
 
 function addBoneControlFromSaved(boneName, axis, value) {
+  // 确保 value 是有效数字
+  const initialValue = isNaN(parseFloat(value)) ? 0 : parseFloat(value);
+  
   const id = `bone-${Date.now()}-${boneName}-${axis}`;
   activeBoneControls.push({ boneName, axis, id });
 
-  const { div, slider, numeric, removeBtn } = createSliderGroup(boneName, axis, 0, id);
+  // 👇 关键：把 initialValue 传给 createSliderGroup
+  const { div, slider, numeric, removeBtn } = createSliderGroup(boneName, axis, initialValue, id);
 
-  // === 同步滑块 → 数字框 ===
+  // 同步滑块 → 数字框
   slider.addEventListener('input', () => {
-    numeric.value = slider.value; // 保持一致
+    numeric.value = slider.value;
     updateBoneDisplay(id);
     applyAllBoneControls();
   });
 
-  // === 同步数字框 → 滑块（当用户输入后按回车/失焦）===
+  // 同步数字框 → 滑块
   numeric.addEventListener('change', () => {
     let val = parseFloat(numeric.value);
     if (isNaN(val)) val = 0;
-    // 限制范围
     val = Math.max(-3.14, Math.min(3.14, val));
     slider.value = val;
     numeric.value = val.toFixed(2);
@@ -337,8 +361,12 @@ function addBoneControlFromSaved(boneName, axis, value) {
     removeBoneControl(id);
   });
 
-  document.getElementById('dynamic-sliders')?.appendChild(div);
+  const container = document.getElementById('dynamic-sliders');
+  if (container) container.appendChild(div);
+  
+  // 立即应用初始值
   updateBoneDisplay(id);
+  applyAllBoneControls(); // 可选：立即生效
 }
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -351,46 +379,93 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 // 应用从 localStorage 保存的完整姿势（骨骼 + 相机）
 function applySavedPose() {
-  const key = `pose_${currentRoommateId}`;
+  // 👇 使用与 saveFullPose 相同的 key
+  const key = `ambiguity-gap:pose-${currentRoommateId || 'default'}`;
   const saved = localStorage.getItem(key);
+  
   if (saved) {
-    const data = JSON.parse(saved);
+    try {
+      const data = JSON.parse(saved);
 
-    // 恢复骨骼控制
-    if (data.boneControls && Array.isArray(data.boneControls)) {
-      data.boneControls.forEach(ctrl => {
-        addBoneControlFromSaved(ctrl.boneName, ctrl.axis, ctrl.value);
-      });
-    }
+      // 清空现有控制（可选，避免重复）
+      activeBoneControls = [];
+      const slidersContainer = document.getElementById('dynamic-sliders');
+      if (slidersContainer) slidersContainer.innerHTML = '';
 
-    // 恢复相机位置
-    if (data.cameraPosition) {
-      cameraPosition.set(
-        data.cameraPosition.x,
-        data.cameraPosition.y,
-        data.cameraPosition.z
-      );
-      updateCameraDisplay();
-      updateCameraPosition();
+      // 恢复骨骼控制
+      if (data.boneControls && Array.isArray(data.boneControls)) {
+        data.boneControls.forEach(ctrl => {
+          // 👇 传入保存的 value
+          addBoneControlFromSaved(ctrl.boneName, ctrl.axis, ctrl.value);
+        });
+      }
+
+      // 恢复相机位置
+      if (data.cameraPosition) {
+        // 假设 cameraPosition 是 THREE.Vector3 或普通对象
+        if (typeof cameraPosition.set === 'function') {
+          cameraPosition.set(
+            data.cameraPosition.x,
+            data.cameraPosition.y,
+            data.cameraPosition.z
+          );
+        } else {
+          cameraPosition.x = data.cameraPosition.x;
+          cameraPosition.y = data.cameraPosition.y;
+          cameraPosition.z = data.cameraPosition.z;
+        }
+        updateCameraDisplay();
+        if (typeof updateCameraPosition === 'function') {
+          updateCameraPosition();
+        }
+      }
+    } catch (e) {
+      console.warn('加载姿势失败:', e);
     }
   }
 }
 
 // 保存姿势（按舍友 ID 区分）
 function saveFullPose() {
-  const key = `pose_${currentRoommateId}`;
-  const data = {
-    boneControls: globalWindow.activeBoneControls.map(ctrl => {
-      // 👇 必须读取 ctrl 的属性，否则 TS 认为“未使用”
-      return {
-        boneName: ctrl.boneName,
-        axis: ctrl.axis,
-        value: parseFloat(document.getElementById(ctrl.id)?.value || 0)
-      };
-    }),
-    cameraPosition: globalWindow.cameraPosition.clone()
+  localStorage.removeItem('ambiguity-gap:default-pose');
+  const key = `ambiguity-gap:pose-${currentRoommateId || 'default'}`; // 👈 必须和 applySavedPose 一致！
+
+  // 获取骨骼值（通过 ID 安全读取）
+  const boneControls = activeBoneControls.map(ctrl => {
+    const el = document.getElementById(ctrl.id) || 
+               document.getElementById(`${ctrl.id}-input`);
+    return {
+      boneName: ctrl.boneName,
+      axis: ctrl.axis,
+      value: el ? parseFloat(el.value) : 0
+    };
+  });
+
+  const poseData = {
+    boneControls,
+    cameraPosition: {
+      x: cameraPosition.x,
+      y: cameraPosition.y,
+      z: cameraPosition.z
+    },
+    timestamp: Date.now()
   };
-  localStorage.setItem(`pose_${currentRoommateId}`, JSON.stringify(data));
+    
+  localStorage.setItem(key, JSON.stringify(poseData));
+  showTemporaryMessage('姿势已保存', '#4CAF50');
+}
+
+// 通用提示函数（复用现有系统弹窗）
+function showSystemMessage(text, duration = 2000) {
+  const msg = document.getElementById('system-message');
+  if (msg) {
+    msg.querySelector('.dialog-body').textContent = text;
+    msg.classList.remove('hidden');
+    setTimeout(() => msg.classList.add('hidden'), duration);
+  } else {
+    // 临时创建（如果不存在）
+    alert(text);
+  }
 }
 
 function resetFullPose() {
@@ -560,7 +635,186 @@ async function loadRoommate(roommateId) {
   }, 100);
 }
 
+// ========== 网络邻居功能（必须在 DOMContentLoaded 外部！） ==========
+function openNetworkNeighbors() {
+  const win = document.getElementById('network-neighbors-window');
+  if (win) {
+    win.classList.remove('hidden');
+    bringToFront(win);
+    makeDraggable(win);
+  }
+  registerTaskbarWindow('network-neighbors-window', '🌐', '网络邻居');
+}
+
+function createNetworkRoom() {
+  const char = localStorage.getItem('ambiguity-gap:selected-character');
+  if (!char) {
+    alert('请先通过“我的电脑 → E盘”选择角色！');
+    openProcessSelector();
+    return;
+  }
+  const roomId = 'gap-' + Date.now().toString(36).slice(-6);
+  window.open(`./ambiguity-gap.html?mode=network&room=${roomId}`, '_blank');
+  alert(`✅ 房间已创建\nID: ${roomId}`);
+}
+
+function joinNetworkRoom() {
+  const char = localStorage.getItem('ambiguity-gap:selected-character');
+  if (!char) {
+    alert('请先通过“我的电脑 → E盘”选择角色！');
+    openProcessSelector();
+    return;
+  }
+  
+  const roomId = document.getElementById('join-room-id')?.value.trim();
+  if (!roomId) {
+    alert('请输入房间ID！');
+    return;
+  }
+  
+  // 👇 关键修复：确保包含 .html 和 mode 参数
+  window.open(`/ambiguity-gap.html?mode=network&room=${roomId}`, '_blank');
+  
+  // 清空输入框
+  document.getElementById('join-room-id').value = '';
+}
+
+
+function makeDraggable(element) {
+  const titleBar = element.querySelector('.window-titlebar');
+  if (!titleBar) return;
+  let isDragging = false, offsetX, offsetY;
+  titleBar.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    offsetX = e.clientX - element.getBoundingClientRect().left;
+    offsetY = e.clientY - element.getBoundingClientRect().top;
+    element.style.opacity = '0.9';
+    bringToFront(element);
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    element.style.left = Math.max(0, e.clientX - offsetX) + 'px';
+    element.style.top = Math.max(0, e.clientY - offsetY) + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    element.style.opacity = '1';
+  });
+}
+
+// 存储已绑定的监听器引用（便于移除）
+let poseEditorListeners = [];
+
+function cleanupPoseEditor() {
+  // 1. 移除所有事件监听器
+  poseEditorListeners.forEach(({ el, type, fn }) => {
+    el.removeEventListener(type, fn);
+  });
+  poseEditorListeners = [];
+
+  // 2. 清空骨骼控制数据
+  activeBoneControls = [];
+
+  // 3. 清空动态滑块区域（可选）
+  const slidersContainer = document.getElementById('dynamic-sliders');
+  if (slidersContainer) {
+    slidersContainer.innerHTML = '';
+  }
+
+  // 4. 重置拖拽状态（如果 makeDraggable 有副作用）
+  const container = document.getElementById('pose-editor-container');
+  if (container) {
+    delete container.dataset.dragInitialized;
+  }
+}
+
+// 临时消息提示（轻量级，无需额外 DOM）
+function showTemporaryMessage(text, bgColor = '#2196F3') {
+  const msg = document.createElement('div');
+  msg.textContent = text;
+  msg.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${bgColor};
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    z-index: 10000;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  `;
+  document.body.appendChild(msg);
+  setTimeout(() => {
+    msg.style.opacity = '0';
+    msg.style.transition = 'opacity 0.3s';
+    setTimeout(() => msg.remove(), 300);
+  }, 2000);
+}
+
+// ========== 任务栏窗口管理器 ==========
+const openWindows = new Map(); // key: containerId, value: { title, emoji, element }
+
+function registerTaskbarWindow(containerId, emoji, title) {
+  if (openWindows.has(containerId)) return;
+  
+  const element = document.getElementById(containerId);
+  if (!element) return;
+  
+  openWindows.set(containerId, { emoji, title, element });
+  renderTaskbarIcons();
+}
+
+function unregisterTaskbarWindow(containerId) {
+  openWindows.delete(containerId);
+  renderTaskbarIcons();
+}
+
+function renderTaskbarIcons() {
+  const container = document.getElementById('taskbar-windows');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  openWindows.forEach(({ emoji, title, element }, id) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = title; // 鼠标悬停提示
+    btn.textContent = emoji;
+    btn.style.cssText = `
+      background: #d4d0c8;
+      border: 1px solid #000;
+      padding: 2px 6px;
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      min-width: 24px;
+      text-align: center;
+    `;
+    
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      element.classList.remove('hidden');
+      bringToFront(element.querySelector('.app-window'));
+    };
+    
+    container.appendChild(btn);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // >>>>> 【新增】首次启动检测 + 调试 <<<<<
+  const setupCompleted = localStorage.getItem('ambiguityos:setup_completed');
+  console.log('🔍 main.js loaded. Checking setup status...');
+  console.log('ambiguityos:setup_completed =', setupCompleted);
+
+  if (setupCompleted !== 'true') {
+    console.warn('⚠️ Setup not completed. Redirecting to setup-wizard.html');
+    window.location.href = './setup-wizard.html';
+    return;
+  }
+  console.log('✅ Setup confirmed. Proceeding to boot...');
+  // <<< 【新增结束】 >>>
+
   // ========== 启动阶段 ==========
   const bootLog = [
     "> Mounting AmbiguityOS_Boot.img...",
@@ -685,6 +939,9 @@ acceptBtn.addEventListener('click', () => {
               initStartMenu();
               initMyComputer();
               initMyDocuments();
+              initWindow3D();
+              loadDefaultPose(); // 👈 在 3D 场景初始化后调用
+              loadSavedPose(); 
               // 横屏提示
               if (window.matchMedia("(orientation: landscape)").matches) {
                 setTimeout(() => {
@@ -725,35 +982,43 @@ acceptBtn.addEventListener('click', () => {
   // ========== 桌面图标交互 ==========
 function openAppWindow(appId) {
   const win = document.getElementById(appId + '-window');
-  if (win) {
-    win.classList.remove('hidden');
-    bringToFront(win);
-    makeDraggable(win);
+  if (!win) return;
 
-    // ========== 特殊初始化：我的电脑 ==========
-    if (appId === 'my-computer') {
-      // 只绑定一次，避免重复监听
-      if (!win.dataset.initialized) {
-        win.querySelectorAll('.drive-item[data-drive]').forEach(disk => {
-          disk.addEventListener('click', () => {
-            const d = disk.getAttribute('data-drive');
-            if (d === 'c') {
-              alert('【C盘】\n\n这是系统核心。\n双击文件夹以进入。');
-            } else if (d === 'e') {
-              // E盘 = 进程选择器
-              openProcessSelector();
-            } else if (d === 'd') {
-              openPoseEditor(); // ← 替换原来的 alert
-            } else {
-              alert(`打开 ${disk.textContent}...`);
-            }
-          });
+  win.classList.remove('hidden');
+  bringToFront(win.querySelector('.app-window'));
+  makeDraggable(win);
+
+  // 👇 新增：注册到任务栏（带 Emoji）
+  const appMap = {
+    'my-computer': { emoji: '💻', title: '我的电脑' },
+    'recycle-bin': { emoji: '🗑️', title: '回收站' },
+    'ie': { emoji: '🇮🇪​', title: 'Internet Explorer' },
+    // 可继续扩展...
+  };
+
+  if (appMap[appId]) {
+    registerTaskbarWindow(win.id, appMap[appId].emoji, appMap[appId].title);
+  }
+
+  // ========== 特殊初始化：我的电脑 ==========
+  if (appId === 'my-computer') {
+    if (!win.dataset.initialized) {
+      win.querySelectorAll('.drive-item[data-drive]').forEach(disk => {
+        disk.addEventListener('click', () => {
+          const d = disk.getAttribute('data-drive');
+          if (d === 'c') {
+            alert('【C盘】\n\n这是系统核心。\n双击文件夹以进入。');
+          } else if (d === 'e') {
+            openProcessSelector();
+          } else if (d === 'd') {
+            openPoseEditor();
+          } else {
+            alert(`打开 ${disk.textContent}...`);
+          }
         });
-        win.dataset.initialized = 'true'; // 标记已初始化
-      }
+      });
+      win.dataset.initialized = 'true';
     }
-
-    // ========== 其他窗口可类似扩展 ==========
   }
 }
 
@@ -766,6 +1031,9 @@ function initDesktopIcons() {
       if (app === 'my-computer') openAppWindow('my-computer');
       else if (app === 'recycle-bin') openAppWindow('recycle-bin');
       else if (app === 'internet-explorer') openAppWindow('ie');
+      else if (app === 'network-neighbors') {
+        openNetworkNeighbors();
+      };
     });
   });
 
@@ -792,9 +1060,12 @@ document.querySelectorAll('.menu-item').forEach(item => {
       // 检查是否已选角色
       const selected = localStorage.getItem('ambiguity-gap:selected-character');
       if (selected) {
-        window.open('./ambiguity-gap.html', '_blank');
+        // 👇 添加 mode=single 参数
+        console.log('🚀 Opening single mode with char:', localStorage.getItem('ambiguity-gap:selected-character'));
+        window.open('./ambiguity-gap.html?mode=single', '_blank');
       } else {
         alert('请先在“进程选择器”中选择一个角色！');
+        openProcessSelector(); // 自动打开 E 盘
       }
     } else {
       alert(`打开 ${item.textContent}...`);
@@ -802,16 +1073,74 @@ document.querySelectorAll('.menu-item').forEach(item => {
   });
 });
 
-  // 全局关闭按钮
-  document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('window-close')) {
-      const win = e.target.closest('.app-window');
-      if (win) win.classList.add('hidden');
-    }
-  });
+  // 全局关闭按钮处理（含任务栏同步）
+document.addEventListener('click', (e) => {
+  if (!e.target.classList.contains('window-close')) return;
+
+  const container = e.target.closest('.window-container');
+  if (!container || !container.id) {
+    console.warn('❌ 关闭按钮未关联有效 window-container');
+    return;
+  }
+
+  // 隐藏窗口
+  container.classList.add('hidden');
+
+  // 👇 关键：注销任务栏图标
+  unregisterTaskbarWindow(container.id);
+
+  // 特殊清理
+  if (container.id === 'pose-editor-container') {
+    cleanupPoseEditor();
+  }
+});
 }
 
+function loadDefaultPose() {
+  const saved = localStorage.getItem('ambiguity-gap:default-pose');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      if (data.camera) {
+        Object.assign(cameraPosition, data.camera);
+        // 刷新 UI（如果 D 盘开着，会自动同步；否则下次打开时同步）
+        if (typeof updateCameraDisplay === 'function') {
+          updateCameraDisplay();
+        }
+        if (typeof updateCameraPosition === 'function') {
+          updateCameraPosition();
+        }
+      }
+    } catch (e) {
+      console.warn('加载默认姿势失败', e);
+    }
+  }
+}
 
+// 👇 使用事件委托：监听整个 document，只绑一次
+document.addEventListener('click', function(e) {
+  if (!e.target.classList.contains('window-close')) return;
+
+  // 获取容器 ID（优先级：data-target > .window-container.id）
+  const container = e.target.closest('.window-container');
+  if (!container || !container.id) {
+    console.warn('关闭按钮未关联有效 window-container');
+    return;
+  }
+
+  const targetId = container.id;
+
+  // 隐藏窗口
+  container.classList.add('hidden');
+
+  // 👇 新增：注销任务栏图标（关键！）
+  unregisterTaskbarWindow(targetId);
+
+  // 特殊清理
+  if (targetId === 'pose-editor-container') {
+    cleanupPoseEditorListeners();
+  }
+});
 
 // ========== 我的电脑初始化 ==========
 function initMyComputer() {
@@ -937,9 +1266,11 @@ document.getElementById('send-chat')?.addEventListener('click', () => {
   }
 });
 
-// 启动裂隙
+// 启动裂隙训练营
+// 原有代码（main.js 第 2800 行左右）
 document.getElementById('launch-gap')?.addEventListener('click', () => {
-  alert("《歧义裂隙》尚未完全加载……\nLiving OS 正在后台编译你的命运。");
+  // 改为：启动训练营（固定角色，无需选角）
+  window.open('./ambiguity-gap.html?mode=tutorial', '_blank');
 });
 
 // 关闭聊天窗口 + Window 回 idle
@@ -965,55 +1296,66 @@ document.getElementById('chinese-bone-names-toggle')?.addEventListener('change',
 
 // ========== 进程选择器（E盘功能） ==========
 function openProcessSelector() {
-  const win = document.getElementById('process-selector-window');
+  const container = document.getElementById('process-selector-container');
+  const win = container.querySelector('.app-window');
   const listEl = document.getElementById('character-list');
 
-  // 获取可用角色（初期固定，后续可动态）
-  const available = ['通用', 'Windown'];
-  
-  // 示例：如果已解锁赵雅懿（可通过 localStorage 判断）
-  if (localStorage.getItem('ambiguity-gap:unlocked-zhao')) {
-    available.push('赵雅懿');
-  }
-  if (localStorage.getItem('ambiguity-gap:unlocked-luolie')) {
-    available.push('逻裂体');
-  }
+  // 👇 新增：注册到任务栏
+  registerTaskbarWindow('process-selector-container', '⚙️', '进程选择器 (E:)');
 
-  // 渲染单选按钮
+  // 渲染角色列表（安全：每次重建）
+  const available = ['通用', 'Windown'];
+  if (localStorage.getItem('ambiguity-gap:unlocked-zhao')) available.push('赵雅懿');
+  if (localStorage.getItem('ambiguity-gap:unlocked-luolie')) available.push('逻裂体');
+
   listEl.innerHTML = '';
-  let first = true;
-  available.forEach(name => {
+  available.forEach((name, i) => {
     const label = document.createElement('label');
     label.style.display = 'block';
     label.style.margin = '6px 0';
     label.innerHTML = `
-      <input type="radio" name="selected-char" value="${name}" ${first ? 'checked' : ''}>
+      <input type="radio" name="selected-char" value="${name}" ${i === 0 ? 'checked' : ''}>
       ${name}
     `;
     listEl.appendChild(label);
-    first = false;
   });
 
   // 显示窗口
-  win.classList.remove('hidden');
-  bringToFront(win);
-  makeDraggable(win);
+  container.classList.remove('hidden');
+  bringToFront(container);
 
-  // 重新绑定按钮事件（避免重复）
-  document.getElementById('confirm-select-btn').onclick = () => {
-    const selected = document.querySelector('input[name="selected-char"]:checked');
-    if (selected) {
-      const char = selected.value;
-      localStorage.setItem('ambiguity-gap:selected-character', char);
-      localStorage.setItem('ambiguity-gap:trust', '50');
-      alert(`✅ 主进程已设为：${char}\n现在可启动《歧义裂隙》！`);
-    }
-    win.classList.add('hidden');
-  };
+  // 初始化拖拽（仅一次）
+  if (!container.dataset.dragInitialized) {
+    makeDraggable(win);
+    container.dataset.dragInitialized = 'true';
+  }
 
-  document.getElementById('cancel-select-btn').onclick = () => {
-    win.classList.add('hidden');
-  };
+  // ========== 关键：使用 addEventListener + 标志位防重复 ==========
+  const confirmBtn = document.getElementById('confirm-select-btn');
+  const cancelBtn = document.getElementById('cancel-select-btn');
+
+  if (!confirmBtn.dataset.bound) {
+    const handler = () => {
+      const selected = document.querySelector('input[name="selected-char"]:checked');
+      if (selected) {
+        const char = selected.value;
+        localStorage.setItem('ambiguity-gap:selected-character', char);
+        localStorage.setItem('ambiguity-gap:trust', '50');
+        alert(`✅ 主进程已设为：${char}\n现在可启动《歧义裂隙》！`);
+      }
+      container.classList.add('hidden'); // 👈 直接隐藏，依赖统一关闭逻辑
+    };
+    confirmBtn.addEventListener('click', handler);
+    confirmBtn.dataset.bound = 'true'; // 标记已绑定
+  }
+
+  if (!cancelBtn.dataset.bound) {
+    const handler = () => {
+      container.classList.add('hidden');
+    };
+    cancelBtn.addEventListener('click', handler);
+    cancelBtn.dataset.bound = 'true';
+  }
 }
 
 
@@ -1063,6 +1405,23 @@ function initWindow3D() {
   // 👇 加载默认舍友
   loadRoommate(currentRoommateId);
 }
+
+function loadSavedPose() {
+  const saved = localStorage.getItem('ambiguity-gap:default-pose');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      if (data.camera) {
+        Object.assign(cameraPosition, data.camera);
+        updateCameraDisplay();
+        updateCameraPosition();
+      }
+    } catch (e) {
+      console.warn('加载默认姿势失败', e);
+    }
+  }
+}
+
 
 
 // ========== Window 实体 - 可拖动舍友 ==========
@@ -1281,51 +1640,27 @@ function moveToWindowSide() {
   requestAnimationFrame(animate);
 }
 
-function bringToFront(windowElement) {
-  const allWindows = document.querySelectorAll('.app-window');
-  let maxZ = 100;
-  allWindows.forEach(w => {
-    const z = parseInt(getComputedStyle(w).zIndex) || 100;
-    if (z > maxZ) maxZ = z;
-  });
-  windowElement.style.zIndex = maxZ + 10;
-}
-
-function makeDraggable(element) {
-  const titleBar = element.querySelector('.window-titlebar');
-  if (!titleBar) return;
-  let isDragging = false, offsetX, offsetY;
-  titleBar.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    offsetX = e.clientX - element.getBoundingClientRect().left;
-    offsetY = e.clientY - element.getBoundingClientRect().top;
-    element.style.opacity = '0.9';
-    bringToFront(element);
-  });
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    element.style.left = Math.max(0, e.clientX - offsetX) + 'px';
-    element.style.top = Math.max(0, e.clientY - offsetY) + 'px';
-  });
-  document.addEventListener('mouseup', () => {
-    isDragging = false;
-    element.style.opacity = '1';
-  });
-}
-
-// ========== 扩展后的姿势编辑器 ==========
+// ========== 扩展后的姿势编辑器（D:） ==========
 function openPoseEditor() {
-  const win = document.getElementById('pose-editor-window');
-  if (!win) return;
-  win.classList.remove('hidden');
-  bringToFront(win);
-  makeDraggable(win);
+  const container = document.getElementById('pose-editor-container');
+  const win = container.querySelector('.app-window');
+  
+  container.classList.remove('hidden');
+  bringToFront(container);
 
-  // 清空动态控件
-  activeBoneControls = [];
-  document.getElementById('dynamic-sliders').innerHTML = '';
+  // 👇 新增：注册到任务栏
+  registerTaskbarWindow('pose-editor-container', '💾', '姿势驱动器 (D:)');
 
-  // 填充骨骼选择器
+  // 初始化拖拽
+  if (!container.dataset.dragInitialized) {
+    makeDraggable(win);
+    container.dataset.dragInitialized = 'true';
+  }
+
+  // 👇 关键：每次打开前先清理（防御性）
+  cleanupPoseEditor();
+
+  // 填充骨骼选择器...
   const boneSelect = document.getElementById('bone-selector');
   boneSelect.innerHTML = '';
   if (window.fullSkeleton) {
@@ -1333,22 +1668,67 @@ function openPoseEditor() {
       if (bone.name && !bone.name.includes('IK')) {
         const opt = document.createElement('option');
         opt.value = bone.name;
-        opt.textContent = bone.name;
+        opt.textContent = useChineseBoneNames ? translateBoneName(bone.name) : bone.name;
         boneSelect.appendChild(opt);
       }
     });
   }
 
-  // ========== 关键修复：更新相机滑块为 X/Y/Z ==========
+  // ========== 绑定相机滑块 ==========
+  ['x', 'y', 'z'].forEach(axis => {
+    const slider = document.getElementById(`cam-${axis}`);
+    const input = document.getElementById(`cam-${axis}-input`);
+    
+    const handler = (e) => {
+      const value = parseFloat(e.target.value);
+      cameraPosition[axis] = value;
+      updateCameraDisplay();
+      updateCameraPosition();
+    };
+
+    if (slider) {
+      slider.addEventListener('input', handler);
+      poseEditorListeners.push({ el: slider, type: 'input', fn: handler });
+    }
+    if (input) {
+      input.addEventListener('change', handler);
+      poseEditorListeners.push({ el: input, type: 'change', fn: handler });
+    }
+  });
+
+  // ========== 绑定保存/重置按钮 ==========
+  const saveBtn = document.getElementById('pose-save-btn');
+  const saveHandler = () => saveFullPose();
+  saveBtn.addEventListener('click', saveHandler);
+  poseEditorListeners.push({ el: saveBtn, type: 'click', fn: saveHandler });
+
+  const resetBtn = document.getElementById('pose-reset-btn');
+  const resetHandler = () => resetFullPose();
+  resetBtn.addEventListener('click', resetHandler);
+  poseEditorListeners.push({ el: resetBtn, type: 'click', fn: resetHandler });
+
+  // 刷新相机显示
   if (typeof cameraPosition !== 'undefined') {
     document.getElementById('cam-x').value = cameraPosition.x;
     document.getElementById('cam-y').value = cameraPosition.y;
     document.getElementById('cam-z').value = cameraPosition.z;
-    updateCameraDisplay(); // 刷新显示值
+    updateCameraDisplay();
   }
 }
 
+// 清理 D 盘所有监听器
+function cleanupPoseEditorListeners() {
+  poseEditorActiveListeners.forEach(({ el, type, fn }) => {
+    el.removeEventListener(type, fn);
+  });
+  poseEditorActiveListeners = [];
+}
+
 // ========== 在 DOMContentLoaded 回调末尾绑定新事件 ==========
+
+// ========== 绑定网络邻居窗口事件 ==========
+document.getElementById('create-room-btn')?.addEventListener('click', createNetworkRoom);
+document.getElementById('join-room-btn')?.addEventListener('click', joinNetworkRoom);
 
 // ========== 舍友切换 ==========
 document.querySelectorAll('.roommate-btn').forEach(btn => {
@@ -1474,6 +1854,7 @@ function checkBrowserSupport() {
 
 // 在 DOMContentLoaded 中调用
 checkBrowserSupport();
+
 
 // ========== 兼容旧版函数 ==========
 function updatePoseDisplay() {

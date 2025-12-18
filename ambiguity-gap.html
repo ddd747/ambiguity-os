@@ -5,14 +5,14 @@
   <meta charset="UTF-8" />
   <title>歧义裂隙 - Ambiguity Gap</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="styles/gap-style.css" />
+  <link rel="stylesheet" href="./styles/gap-style.css" />
 </head>
 <body>
   <!-- 顶部状态 -->
 <div class="status-bar">
   <div>⚔️ 歧义裂隙 v0.1.0</div>
   <div>
-    角色：<span id="current-character">加载中...</span>
+    你的角色：<span id="current-character">-</span>
     <!-- 新增：设置按钮 -->
     <button id="open-settings" class="settings-btn">⚙️</button>
   </div>
@@ -51,21 +51,29 @@
   <div class="main-content">
     <!-- 左侧：战斗地图 -->
     <div class="map-container">
-      <div class="battle-grid" id="battle-grid"></div>
+      <div id="battle-grid" class="battle-grid"></div>
     </div>
 
     <!-- 右侧：角色状态 -->
     <div class="character-panel">
       <h3>👤 角色状态</h3>
-      <p>名称：<span id="char-name">-</span></p>
+      <p>名称：<span id="char-name"></span></p>
       <p>生命值：<span id="char-hp">100</span>/100</p>
-      <p>信任值：<span id="char-trust">50</span>/100</p>
+      <p>攻击力：<span id="char-atk">10</span></p>
       <p>技能：<span id="char-skill">无</span></p>
+      <!-- 👇 新增：联网状态 -->
+      <p>房间状态：<span id="network-status">-</span></p>
       <!-- 未来可扩展：装备、buff 等 -->
-      <p>当前层级：<span id="current-level">0</span></p>
+       <!-- 👇 新增：联网状态（不干扰 current-level） -->
+      <p>连接状态：</p>
+        <span id="connection-status">-</span></p>
+      <p>当前视图层级：<span id="current-level"></span></p>
       <button id="btn-layer-up" disabled>+1</button>
       <button id="btn-layer-down" disabled>-1</button>
     </div>
+
+    <!-- 👇 新增：右侧扩展区（用于未来 UI 或留白） -->
+    <div class="extension-panel"></div>
   </div>
 
   <!-- 底部操作 -->
@@ -73,7 +81,7 @@
     <button id="back-to-desktop">返回桌面</button>
   </div>
 
-  <script src="scripts/settings.js"></script>
-  <script src="scripts/gap-script.js"></script>
+  <script src="./scripts/settings.js"></script>
+  <script src="./scripts/gap-script.js"></script>
 </body>
 </html>

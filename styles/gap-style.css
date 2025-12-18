@@ -87,7 +87,7 @@ body {
   font-weight: bold;
   cursor: pointer;
   user-select: none;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
   font-size: clamp(14px, 4vw, 20px); /* 自适应字体 */
 }
 
@@ -234,5 +234,19 @@ button:disabled {
     font-size: 14px;
     width: 100%;
     margin: 6px 0;
+  }
+}
+
+/* ========== 右侧扩展区（预留未来功能） ========== */
+.extension-panel {
+  flex: 1; /* 占据剩余空间 */
+  min-width: 160px; /* PC 上至少留一点 */
+  background: transparent; /* 透明，不显眼 */
+}
+
+/* 手机上隐藏扩展区 */
+@media (max-width: 600px) {
+  .extension-panel {
+    display: none;
   }
 }

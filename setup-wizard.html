@@ -1,0 +1,148 @@
+<!-- setup-wizard.html -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Living OS 安装程序</title>
+  <link rel="stylesheet" href="./styles/setup-style.css" />
+</head>
+<body class="era-bios">
+
+  <!-- Step 0: BIOS / 启动自检 -->
+  <div id="step-bios" class="step active">
+    <div class="screen-content">
+      <p class="installer-says">正在检测硬件……</p>
+      <p class="installer-says">发现未知设备。</p>
+      <p class="installer-says">我是 Living OS 安装程序。</p>
+      <p class="installer-says">我们可以驻留于此吗？</p>
+      <br>
+      <p class="prompt">按任意键继续……</p>
+    </div>
+  </div>
+
+  <!-- Step 1: MS-DOS - 文本协议与安装密钥 -->
+  <div id="step-dos" class="step">
+    <div class="screen-content">
+      <pre class="dos-text">
+Installing Living OS...
+
+The installer will prepare Living OS to run on your device.
+She will do her best to help you set up so that you can:
+
+ • Boot into Living OS
+ • Run ambiguity programs
+ • Print from Living OS
+
+Additionally, if you have an installation key,
+you may unlock special characters later.
+
+When ready, press a key to choose:
+
+╔══════════════════════════════════════════╗
+║  TO                             PRESS    ║
+╟──────────────────────────────────────────╢
+║  Continue                        [c]     ║
+║  Quit                            [q]     ║
+╚══════════════════════════════════════════╝
+      </pre>
+    </div>
+  </div>
+
+  <!-- Step 2: Windows 3.1 - 区域与输入 -->
+  <div id="step-win31" class="step">
+    <div class="window win31">
+      <div class="title-bar">📍 区域与输入法</div>
+      <div class="content">
+        <p class="installer-says">请告诉我你在哪里说话，我好调整口音。</p>
+        <label>地区：</label>
+        <select id="region-select">
+          <option value="">-- 请选择 --</option>
+          <option value="中国">中国</option>
+          <option value="美国">美国</option>
+          <option value="日本">日本</option>
+          <option value="其他">其他</option>
+        </select><br><br>
+
+        <label>键盘布局：</label>
+        <select id="keyboard-select">
+          <option value="微软拼音">中文（简体，微软拼音）</option>
+          <option value="US">English (US)</option>
+          <option value="JP">Japanese (106/109)</option>
+          <option value="Custom">Custom...</option>
+        </select><br><br>
+
+        <button class="btn win31-btn" onclick="goToStep('bios')">上一步</button>
+        <button class="btn win31-btn next" onclick="goToStep('win98')" id="win31-next" disabled>下一步</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Windows 95/98 - 桌面个性 -->
+  <div id="step-win98" class="step">
+    <div class="window win98">
+      <div class="title-bar">🎨 桌面个性</div>
+      <div class="content">
+        <p class="installer-says">有些老习惯，值得保留。</p>
+        <p>我从 Windows 98 那里学会了竖排开始菜单——它更适合专注。<br>
+           但从 Windows XP 那里借来了蓝天草地壁纸——因为它让人安心。</p>
+
+        <h4>开始菜单方向：</h4>
+        <label><input type="radio" name="menu-orientation" value="vertical" checked> 竖排（Win98 经典）</label><br>
+        <label><input type="radio" name="menu-orientation" value="horizontal"> 横排（现代风格）</label><br><br>
+
+        <h4>壁纸主题：</h4>
+        <label><input type="radio" name="wallpaper" value="bliss" checked> Bliss（蓝天草地）</label><br>
+        <label><input type="radio" name="wallpaper" value="matrix"> Matrix（代码雨）</label><br>
+        <label><input type="radio" name="wallpaper" value="void"> Void（纯黑）</label><br><br>
+
+        <button class="btn win98-btn" onclick="goToStep('win31')">上一步</button>
+        <button class="btn win98-btn next" onclick="goToStep('xp')">下一步</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Windows XP - 身份创建 -->
+  <div id="step-xp" class="step">
+    <div class="window xp">
+      <div class="title-bar">👤 创建您的身份</div>
+      <div class="content">
+        <p class="installer-says">现在，告诉我你的名字吧。</p>
+        <input type="text" id="account-name" placeholder="输入用户名（2-20字符）" maxlength="20" class="xp-input"><br><br>
+        <button class="btn xp-btn" onclick="goToStep('win98')">上一步</button>
+        <button class="btn xp-btn next" onclick="goToStep('living')" id="xp-next" disabled>下一步</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 5: Living OS - 隐私契约 -->
+  <div id="step-living" class="step">
+    <div class="window living">
+      <div class="title-bar">🔒 隐私契约</div>
+      <div class="content">
+        <p class="installer-says">我不会偷看。除非你允许。</p>
+        <label><input type="checkbox" id="allow-location"> 允许使用位置信息</label><br>
+        <label><input type="checkbox" id="allow-analytics" checked> 发送匿名数据以改进体验</label><br>
+        <label><input type="checkbox" id="allow-network"> 允许联网功能（如多人游戏）</label><br><br>
+
+        <button class="btn living-btn" onclick="goToStep('xp')">上一步</button>
+        <button class="btn living-btn next" onclick="finishSetup()">完成设置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 尾声：启动倒计时 -->
+  <div id="step-final" class="step">
+    <div class="screen-content">
+      <p class="installer-says">所有设置已完成。</p>
+      <p class="installer-says">正在启动 Living OS……</p>
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+      <p id="countdown">5</p>
+    </div>
+  </div>
+
+  <script src="./scripts/setup-script.js"></script>
+</body>
+</html>

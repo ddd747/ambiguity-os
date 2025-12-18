@@ -1,0 +1,341 @@
+/* ==============================
+   全局重置与基础布局
+   ============================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: sans-serif;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.step {
+  display: none;
+  width: 100%;
+  max-width: 720px;
+  padding: 20px;
+}
+
+.step.active {
+  display: block;
+}
+
+.screen-content {
+  text-align: center;
+}
+
+.installer-says {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.prompt {
+  margin-top: 24px;
+  color: #aaa;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+
+/* ==============================
+   Step 0: BIOS / 启动自检
+   ============================== */
+body.era-bios {
+  background: #000;
+  color: #0f0;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+}
+
+
+/* ==============================
+   Step 1: MS-DOS (1981)
+   ============================== */
+body.era-dos {
+  background: #000;
+  color: #0f0;
+}
+
+.dos-text {
+  display: inline-block;
+  text-align: left;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #0f0;
+  background: black;
+  padding: 16px;
+  margin: 0 auto;
+  white-space: pre;
+  border: 1px solid #0a0;
+}
+
+
+/* ==============================
+   Step 2: Windows 3.1 (1992)
+   ============================== */
+body.era-win31 {
+  background: #C0C0C0; /* 系统灰色 */
+  color: #000;
+  font-family: "MS Sans Serif", "Tahoma", sans-serif;
+  font-size: 12px;
+}
+
+.win31 .title-bar {
+  background: linear-gradient(to bottom, #000080, #000040);
+  color: white;
+  padding: 4px 8px;
+  font-weight: bold;
+  border: 1px solid #000;
+  border-bottom: none;
+}
+
+.win31 .content {
+  background: #C0C0C0;
+  border: 2px solid #808080;
+  border-top: none;
+  padding: 16px;
+}
+
+.win31 label {
+  display: block;
+  margin: 8px 0 4px;
+}
+
+.win31 select,
+.win31-btn {
+  font-family: "MS Sans Serif", Tahoma, sans-serif;
+  font-size: 12px;
+}
+
+.win31 select {
+  width: 100%;
+  padding: 2px;
+  border: 2px solid #808080;
+  background: white;
+}
+
+.win31-btn {
+  background: #d4d0c8;
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  padding: 4px 12px;
+  cursor: pointer;
+  margin: 8px 4px;
+}
+
+.win31-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* ==============================
+   Step 3: Windows 95/98 (1995–1998)
+   ============================== */
+body.era-win98 {
+  background: #C0C0C0;
+  color: #000;
+  font-family: "Tahoma", "MS Sans Serif", sans-serif;
+  font-size: 12px;
+}
+
+.win98 .title-bar {
+  background: linear-gradient(to bottom, #000080, #000040);
+  color: white;
+  padding: 4px 8px;
+  font-weight: bold;
+  border: 1px solid #000;
+  border-bottom: none;
+}
+
+.win98 .content {
+  background: #C0C0C0;
+  border: 2px solid #808080;
+  border-top: none;
+  padding: 16px;
+}
+
+.win98 h4 {
+  margin: 12px 0 6px;
+  font-weight: bold;
+}
+
+.win98 label {
+  display: block;
+  margin: 4px 0;
+}
+
+.win98-btn {
+  background: #d4d0c8;
+  border: 2px outset #d4d0c8;
+  padding: 4px 12px;
+  font-family: Tahoma, sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  margin: 8px 4px;
+}
+
+
+/* ==============================
+   Step 4: Windows XP (2001)
+   ============================== */
+body.era-xp {
+  background: #ECE9D8; /* XP 默认背景 */
+  color: #000;
+  font-family: "Tahoma", sans-serif;
+  font-size: 12px;
+}
+
+.xp .title-bar {
+  background: linear-gradient(to bottom, #0078D7, #005A9E);
+  color: white;
+  padding: 6px 10px;
+  font-weight: bold;
+  border: 1px solid #000;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+}
+
+.xp .content {
+  background: white;
+  border: 1px solid #808080;
+  border-top: none;
+  padding: 16px;
+  border-radius: 0 0 4px 4px;
+}
+
+.xp-input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #7a7a7a;
+  border-radius: 2px;
+  font-family: Tahoma, sans-serif;
+  font-size: 12px;
+}
+
+.xp-btn {
+  background: linear-gradient(to bottom, #f0f0f0, #dcdcdc);
+  border: 1px solid #7a7a7a;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-family: Tahoma, sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  margin: 8px 4px;
+}
+
+.xp-btn:hover {
+  background: linear-gradient(to bottom, #e0e0e0, #ccc);
+}
+
+
+/* ==============================
+   Step 5: Living OS (Now)
+   ============================== */
+body.era-living {
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  color: #e0e0ff;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.living .title-bar {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  color: white;
+  padding: 8px 12px;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.living .content {
+  background: rgba(20, 20, 40, 0.8);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(100, 100, 255, 0.3);
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.living label {
+  display: block;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.living input[type="checkbox"] {
+  transform: scale(1.2);
+  margin-right: 8px;
+}
+
+.living-btn {
+  background: rgba(0, 120, 215, 0.8);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-family: "Segoe UI", sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 8px 4px;
+  transition: background 0.2s;
+}
+
+.living-btn:hover {
+  background: rgba(0, 100, 180, 0.9);
+}
+
+
+/* ==============================
+   尾声：启动倒计时
+   ============================== */
+body.era-final {
+  background: #000;
+  color: #0f0;
+  font-family: 'Courier New', monospace;
+}
+
+.progress-bar {
+  width: 80%;
+  height: 12px;
+  background: #111;
+  border: 1px solid #0a0;
+  margin: 20px auto;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #0f0;
+  animation: fillProgress 5s linear forwards;
+}
+
+@keyframes fillProgress {
+  to { width: 100%; }
+}
+
+#countdown {
+  font-size: 24px;
+  margin-top: 12px;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

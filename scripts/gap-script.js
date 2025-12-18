@@ -2,28 +2,67 @@
 
 // ========== 初始化 ==========
 document.addEventListener('DOMContentLoaded', () => {
-  const selectedChar = localStorage.getItem('ambiguity-gap:selected-character');
-  
-  if (!selectedChar) {
-    alert('❌ 未选择角色！请返回主系统选择。');
-    window.location.href = 'index.html';
-    return;
+  console.log('📍 URL:', window.location.href);
+  console.log('🔍 #battle-grid exists:', !!document.getElementById('battle-grid'));
+  console.log('📦 localStorage.selected:', localStorage.getItem('ambiguity-gap:selected-character'));
+  const isGamePage = document.querySelector('#battle-grid') !== null;
+  if (!isGamePage) { /* ... */ return; }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const mode = urlParams.get('mode');
+  console.log('🎮 Detected mode:', mode); // 👈 关键！
+
+  if (mode === 'tutorial') {
+    initCharacter('Windown');
+    document.getElementById('network-status').textContent = '训练营';
+    document.getElementById("connection-status").textContent = 'Never Gonna Give You Up';
+    initBattleMap(); // 👈 关键：初始化地图
+    showTutorialHint(); // ✅ 显示提示
+ } else if (mode === 'single') {
+  let char = localStorage.getItem('ambiguity-gap:selected-character');
+  if (!char) {
+    console.warn('⚠️ 未检测到已选角色，使用默认角色 "通用"');
+    char = '通用';
+    // 可选：自动保存，避免下次再出错
+    localStorage.setItem('ambiguity-gap:selected-character', '通用');
   }
-
-  // 显示当前角色
-  document.getElementById('current-character').textContent = selectedChar;
-
-  // 初始化层级显示
-  let currentLevel = 0;
-  document.getElementById('current-level').textContent = currentLevel;
-  // 示例：未来可从 localStorage 或角色配置读取
-  document.getElementById('char-hp').textContent = '100';
-  document.getElementById('char-trust').textContent = '50'; // 虽然不用于战斗，但可显示
-  document.getElementById('char-skill').textContent = '扫雷直觉';
-  // 初始化地图
-  initBattleMap();
-  initThemeSystem(); // ← 新增：初始化 UI 主题
+    initCharacter(char);
+    document.getElementById('network-status').textContent = '单机模式';
+    document.getElementById('connection-status').textContent = '欸嘿';
+    initBattleMap();
+  } else if (mode === 'network') {
+    // 联网模式暂不初始化（等连接后）
+    const char = localStorage.getItem('ambiguity-gap:selected-character') || '未选择';
+    initCharacter(char);
+    document.getElementById('network-status').textContent = '等待加入...';
+    document.getElementById("connection-status").textContent = '联网中';
+    // 不调用 initBattleMap()
+  }
 });
+
+function initCharacter(name) {
+  document.getElementById('current-character').textContent = name; // 顶部状态栏
+  document.getElementById('char-name').textContent = name;        // 角色面板
+  // 初始化游戏层级为 0（数字）
+  document.getElementById('current-level').textContent = '0';
+}
+
+function showTutorialHint() {
+  const hint = document.createElement('div');
+  hint.textContent = '🎓 欢迎来到训练营！点击地雷学习机制。';
+  hint.style.position = 'absolute';
+  hint.style.top = '10px';
+  hint.style.left = '50%';
+  hint.style.transform = 'translateX(-50%)';
+  hint.style.background = 'rgba(0,0,0,0.7)';
+  hint.style.color = 'white';
+  hint.style.padding = '6px 12px';
+  hint.style.borderRadius = '4px';
+  hint.style.zIndex = '1000';
+  document.body.appendChild(hint);
+  
+  setTimeout(() => hint.remove(), 5000);
+}
 
 // ========== 扫雷地图逻辑 ==========
 function initBattleMap() {
