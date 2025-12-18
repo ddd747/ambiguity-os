@@ -10,6 +10,13 @@ if (localStorage.getItem('ambiguityos:setup_completed') === 'true') {
 
 let currentStep = 'bios';
 
+// 👇 全局工具函数：检测触屏设备
+function isTouchDevice() {
+  return ('ontouchstart' in window) || 
+         (navigator.maxTouchPoints > 0) ||
+         (navigator.msMaxTouchPoints > 0);
+}
+
 // 切换步骤并更新 body class
 function goToStep(step) {
   // 隐藏当前步骤
@@ -19,6 +26,17 @@ function goToStep(step) {
   // 更新全局状态
   currentStep = step;
   document.body.className = `era-${step}`;
+
+  // 👇【修复】检查是否进入 DOS 步骤（用于触屏提示）
+  if (step === 'dos') {
+    // 延迟检测触屏设备并显示按钮（需在 DOM 加载后）
+    setTimeout(() => {
+      const prompt = document.querySelector('#step-dos .touch-prompt');
+      if (prompt && isTouchDevice()) {
+        prompt.classList.remove('hidden');
+      }
+    }, 50);
+  }
 }
 
 // DOS 步骤：监听 C/Q 键
@@ -56,7 +74,7 @@ function finishSetup() {
     keyboard: document.getElementById('keyboard-select').value,
 
     // Step 3: 桌面个性
-    menuOrientation: document.querySelector('input[name="menu-orientation"]:checked').value,
+    startMenuStyle: document.querySelector('input[name="menu-style"]:checked')?.value || 'classic',
     wallpaper: document.querySelector('input[name="wallpaper"]:checked').value,
 
     // Step 4: 身份
@@ -108,5 +126,47 @@ function finishSetup() {
 // 初始化：确保从 BIOS 开始
 document.addEventListener('DOMContentLoaded', () => {
   // 默认已在 BIOS，无需操作
-  // 可在此添加调试快捷键（如按 F12 跳过）
+    // ==============================
+  // 触屏设备兼容：DOS 步骤添加 [C]/[Q] 按钮
+  // ==============================
+
+  // 如果是触屏设备，在 DOS 步骤显示按钮
+  if (isTouchDevice()) {
+    const dosStep = document.getElementById('step-dos');
+    if (dosStep) {
+      // 创建提示容器
+      const prompt = document.createElement('p');
+      prompt.className = 'touch-prompt';
+      prompt.innerHTML = `
+        触屏设备？点这里：<br>
+        <button class="dos-touch-btn" data-key="c">[C] 继续</button>
+        <button class="dos-touch-btn" data-key="q">[Q] 退出</button>
+      `;
+      dosStep.querySelector('.screen-content').appendChild(prompt);
+
+      // 绑定点击事件（使用事件委托）
+      document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('click', (e) => {
+          if (e.target.classList.contains('dos-touch-btn')) {
+            const key = e.target.dataset.key;
+            if (key === 'c') {
+              goToStep('win31');
+            } else if (key === 'q') {
+              alert('Living OS 需要完成初始设置才能运行。');
+            }
+          }
+        });
+      });
+    }
+  }
+
+  // ==============================
+  // 【可选】调试：快速跳过安装（开发用）
+  // ==============================
+  // 按 F12 跳到 XP 步骤（方便测试）
+  // document.addEventListener('keydown', (e) => {
+  //   if (e.key === 'F12') {
+  //     goToStep('xp');
+  //   }
+  // })
 });

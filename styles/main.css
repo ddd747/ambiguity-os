@@ -1065,3 +1065,106 @@ body {
     width: auto;
   }
 }
+
+/* ========== 任务栏菜单 - 横向翻页模式 ========== */
+body.taskbar-menu .start-menu {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  min-width: 360px;     /* 最小可视宽度 */
+  max-width: 90vw;
+  flex-direction: column;
+  border-radius: 4px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+}
+
+/* 头部：横排 Logo + 用户名 */
+body.taskbar-menu .menu-header {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  height: auto;
+  width: auto;
+  background: linear-gradient(to bottom, #000080, #000040);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
+body.taskbar-menu .menu-header .logo-text::after {
+  content: " · ";
+  margin: 0 4px;
+}
+
+/* 内容区：固定高度 + 横向滚动容器 */
+body.taskbar-menu .menu-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;               /* 固定一行高度 */
+  background: #c0c0c0;
+  overflow: hidden;           /* 隐藏超出部分 */
+  padding: 0 30px;            /* 为箭头留空间 */
+}
+
+/* 菜单项包装器：允许横向扩展 */
+body.taskbar-menu .menu-items-wrapper {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;        /* 禁止换行 */
+  transition: transform 0.2s ease-out;
+}
+
+/* 所有菜单项：紧凑、居中 */
+body.taskbar-menu .menu-item {
+  padding: 6px 10px;
+  background: #d4d0c8;
+  border: 1px solid #808080;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+}
+body.taskbar-menu .menu-item:hover {
+  background: #000080;
+  color: white;
+}
+
+/* 隐藏原有的分栏 padding/margin */
+body.taskbar-menu .menu-section {
+  display: contents; /* 让子元素直接参与 flex 布局 */
+}
+
+/* 翻页按钮：经典 Win95 风格 */
+.menu-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  background: #d4d0c8;
+  border: 1px solid #000;
+  border-radius: 0;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+.menu-nav-btn.prev { left: 4px; }
+.menu-nav-btn.next { right: 4px; }
+.menu-nav-btn:hover { background: #e0e0e0; }
+.menu-nav-btn:active { background: #c0c0c0; }
+
+/* 隐藏状态 */
+.menu-nav-btn.hidden { display: none !important; }

@@ -26,9 +26,9 @@
   </div>
 
   <!-- Step 1: MS-DOS - 文本协议与安装密钥 -->
-  <div id="step-dos" class="step">
-    <div class="screen-content">
-      <pre class="dos-text">
+<div id="step-dos" class="step">
+  <div class="screen-content">
+    <pre class="dos-text">
 Installing Living OS...
 
 The installer will prepare Living OS to run on your device.
@@ -49,9 +49,16 @@ When ready, press a key to choose:
 ║  Continue                        [c]     ║
 ║  Quit                            [q]     ║
 ╚══════════════════════════════════════════╝
-      </pre>
-    </div>
+    </pre>
+    
+    <!-- 👇 仅触屏设备显示的提示（默认隐藏） -->
+    <p class="touch-prompt hidden">
+      触屏设备？点这里：<br>
+      <button class="dos-touch-btn" data-key="c">[C] 继续</button>
+      <button class="dos-touch-btn" data-key="q">[Q] 退出</button>
+    </p>
   </div>
+</div>
 
   <!-- Step 2: Windows 3.1 - 区域与输入 -->
   <div id="step-win31" class="step">
@@ -92,8 +99,8 @@ When ready, press a key to choose:
            但从 Windows XP 那里借来了蓝天草地壁纸——因为它让人安心。</p>
 
         <h4>开始菜单方向：</h4>
-        <label><input type="radio" name="menu-orientation" value="vertical" checked> 竖排（Win98 经典）</label><br>
-        <label><input type="radio" name="menu-orientation" value="horizontal"> 横排（现代风格）</label><br><br>
+        <label><input type="radio" name="menu-style" value="classic" checked> 竖排（Win98 经典）</label><br>
+        <label><input type="radio" name="menu-style" value="taskbar"> 横排（任务栏X菜单）</label><br><br>
 
         <h4>壁纸主题：</h4>
         <label><input type="radio" name="wallpaper" value="bliss" checked> Bliss（蓝天草地）</label><br>

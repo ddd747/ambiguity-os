@@ -818,7 +818,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedName = localStorage.getItem('ambiguityos:accountName') || '舍友';
   // 替换开始菜单中的文本
   document.querySelector('.start-menu .user-name').textContent = savedName;
-  // <<< 【新增结束】 >>>
+  // >>>>> 【新增】应用开始菜单风格 <<<<<
+  const menuStyle = localStorage.getItem('ambiguityos:startMenuStyle') || 'classic';
+  if (menuStyle === 'taskbar') {
+    document.body.classList.add('taskbar-menu');
+  } else {
+    document.body.classList.remove('taskbar-menu');
+  }
+  // <<< 【新增结束】 <<<
 
   // ========== 启动阶段 ==========
   const bootLog = [
@@ -1172,43 +1179,108 @@ function initMyComputer() {
   // 暂时留空，后续可添加逻辑
   console.log("✅ My Documents initialized");
 }
-  // ========== 开始菜单 ==========
-  function initStartMenu() {
-    const startButton = document.querySelector('.start-button');
-    const startMenu = document.getElementById('start-menu');
-    let isOpen = false;
+  // ========== 开始菜单（增强版：支持任务栏翻页模式） ==========
+function initStartMenu() {
+  const startButton = document.querySelector('.start-button');
+  const startMenu = document.getElementById('start-menu');
+  if (!startButton || !startMenu) return;
 
-    if (!startButton || !startMenu) return;
+  let isOpen = false;
+  let scrollX = 0; // 当前滚动偏移（仅用于 taskbar 模式）
 
-    const toggleMenu = (e) => {
-      e.stopPropagation();
-      if (isOpen) {
-        startMenu.classList.add('hidden');
-        isOpen = false;
-      } else {
-        startMenu.classList.remove('hidden');
-        isOpen = true;
-      }
-    };
+  // 获取任务栏菜单相关元素
+  const isTaskbarMode = document.body.classList.contains('taskbar-menu');
+  const wrapper = isTaskbarMode ? startMenu.querySelector('.menu-items-wrapper') : null;
+  const prevBtn = isTaskbarMode ? startMenu.querySelector('.menu-nav-btn.prev') : null;
+  const nextBtn = isTaskbarMode ? startMenu.querySelector('.menu-nav-btn.next') : null;
 
-    const closeMenu = () => {
-      if (isOpen) {
-        startMenu.classList.add('hidden');
-        isOpen = false;
-      }
-    };
-
-    // 绑定事件
-    startButton.removeEventListener('click', toggleMenu);
-    startButton.addEventListener('click', toggleMenu);
-
-    document.removeEventListener('click', closeMenu);
-    document.addEventListener('click', closeMenu);
-
-    startMenu.removeEventListener('click', (e) => e.stopPropagation());
-    startMenu.addEventListener('click', (e) => e.stopPropagation());
-
+  // 更新翻页按钮可见性（仅 taskbar 模式）
+  function updateNavButtons() {
+    if (!isTaskbarMode || !wrapper || !prevBtn || !nextBtn) return;
+    const containerWidth = wrapper.parentElement.clientWidth;
+    const contentWidth = wrapper.scrollWidth;
+    prevBtn.classList.toggle('hidden', scrollX <= 0);
+    nextBtn.classList.toggle('hidden', scrollX >= contentWidth - containerWidth);
   }
+
+  // 平滑滚动函数
+  function scrollToOffset(newScrollX) {
+    if (!wrapper) return;
+    scrollX = Math.max(0, Math.min(newScrollX, wrapper.scrollWidth - wrapper.parentElement.clientWidth));
+    wrapper.style.transform = `translateX(-${scrollX}px)`;
+    updateNavButtons();
+  }
+
+  // 绑定翻页按钮事件（仅 taskbar 模式）
+  if (isTaskbarMode && prevBtn && nextBtn) {
+    // 估算一个“合理”的滚动步长（约 1.5 个图标）
+    const getScrollStep = () => {
+      const firstItem = wrapper.querySelector('.menu-item');
+      return firstItem ? firstItem.offsetWidth * 1.5 : 120;
+    };
+
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      scrollToOffset(scrollX - getScrollStep());
+    });
+
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      scrollToOffset(scrollX + getScrollStep());
+    });
+
+    // 初始更新按钮状态
+    setTimeout(updateNavButtons, 100); // 等待渲染
+  }
+
+  // 切换菜单显示
+  const toggleMenu = (e) => {
+    e.stopPropagation();
+    if (isOpen) {
+      startMenu.classList.add('hidden');
+      isOpen = false;
+      // 重置滚动位置（可选）
+      if (isTaskbarMode) {
+        scrollX = 0;
+        if (wrapper) wrapper.style.transform = 'translateX(0)';
+        updateNavButtons();
+      }
+    } else {
+      startMenu.classList.remove('hidden');
+      isOpen = true;
+      if (isTaskbarMode) updateNavButtons();
+    }
+  };
+
+  const closeMenu = () => {
+    if (isOpen) {
+      startMenu.classList.add('hidden');
+      isOpen = false;
+      if (isTaskbarMode) {
+        scrollX = 0;
+        if (wrapper) wrapper.style.transform = 'translateX(0)';
+        updateNavButtons();
+      }
+    }
+  };
+
+  // 绑定事件
+  startButton.removeEventListener('click', toggleMenu);
+  startButton.addEventListener('click', toggleMenu);
+
+  document.removeEventListener('click', closeMenu);
+  document.addEventListener('click', closeMenu);
+
+  startMenu.removeEventListener('click', (e) => e.stopPropagation());
+  startMenu.addEventListener('click', (e) => e.stopPropagation());
+
+  // 窗口缩放时更新按钮状态（仅 taskbar）
+  if (isTaskbarMode) {
+    window.addEventListener('resize', () => {
+      if (isOpen) updateNavButtons();
+    });
+  }
+}
 
   // ========== Window 消息关闭 ==========
   const msgClose = document.getElementById('msg-close');
