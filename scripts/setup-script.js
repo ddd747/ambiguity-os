@@ -39,18 +39,44 @@ function goToStep(step) {
   }
 }
 
-// DOS 步骤：监听 C/Q 键
+// DOS 步骤========== 新 DOS 交互逻辑 ==========
+let hasReceivedKey = false;
+let dosPromptTimeout = null;
+
+// 监听键盘输入（桌面用户）
 document.addEventListener('keydown', (e) => {
   if (currentStep !== 'dos') return;
+  hasReceivedKey = true; // 标记：有键盘输入
 
   const key = e.key.toLowerCase();
   if (key === 'c') {
     goToStep('win31');
   } else if (key === 'q') {
-    // 不允许退出首次设置（可选：也可跳回 BIOS）
     alert('Living OS 需要完成初始设置才能运行。');
   }
 });
+
+// 改造 goToStep：进入 DOS 时启动检测
+function goToStep(step) {
+  document.getElementById(`step-${currentStep}`).classList.remove('active');
+  document.getElementById(`step-${step}`).classList.add('active');
+  currentStep = step;
+  document.body.className = `era-${step}`;
+
+  // 👇 进入 DOS 步骤时，启动“无键盘检测”
+  if (step === 'dos') {
+    hasReceivedKey = false;
+    // 清除之前的定时器（防止多次进入）
+    if (dosPromptTimeout) clearTimeout(dosPromptTimeout);
+    // 1 秒后若无键盘输入，则显示按钮
+    dosPromptTimeout = setTimeout(() => {
+      if (!hasReceivedKey) {
+        const prompt = document.querySelector('#step-dos .touch-prompt');
+        if (prompt) prompt.classList.remove('hidden');
+      }
+    }, 1000);
+  }
+}
 
 // Win3.1：启用“下一步”按钮（当区域已选）
 document.getElementById('region-select').addEventListener('change', () => {
@@ -125,48 +151,15 @@ function finishSetup() {
 
 // 初始化：确保从 BIOS 开始
 document.addEventListener('DOMContentLoaded', () => {
-  // 默认已在 BIOS，无需操作
-    // ==============================
-  // 触屏设备兼容：DOS 步骤添加 [C]/[Q] 按钮
-  // ==============================
-
-  // 如果是触屏设备，在 DOS 步骤显示按钮
-  if (isTouchDevice()) {
-    const dosStep = document.getElementById('step-dos');
-    if (dosStep) {
-      // 创建提示容器
-      const prompt = document.createElement('p');
-      prompt.className = 'touch-prompt';
-      prompt.innerHTML = `
-        触屏设备？点这里：<br>
-        <button class="dos-touch-btn" data-key="c">[C] 继续</button>
-        <button class="dos-touch-btn" data-key="q">[Q] 退出</button>
-      `;
-      dosStep.querySelector('.screen-content').appendChild(prompt);
-
-      // 绑定点击事件（使用事件委托）
-      document.addEventListener('DOMContentLoaded', () => {
-        document.addEventListener('click', (e) => {
-          if (e.target.classList.contains('dos-touch-btn')) {
-            const key = e.target.dataset.key;
-            if (key === 'c') {
-              goToStep('win31');
-            } else if (key === 'q') {
-              alert('Living OS 需要完成初始设置才能运行。');
-            }
-          }
-        });
-      });
+  // 绑定 DOS 按钮点击
+  document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('dos-touch-btn')) {
+      const key = e.target.dataset.key;
+      if (key === 'c') {
+        goToStep('win31');
+      } else if (key === 'q') {
+        alert('Living OS 需要完成初始设置才能运行。');
+      }
     }
-  }
-
-  // ==============================
-  // 【可选】调试：快速跳过安装（开发用）
-  // ==============================
-  // 按 F12 跳到 XP 步骤（方便测试）
-  // document.addEventListener('keydown', (e) => {
-  //   if (e.key === 'F12') {
-  //     goToStep('xp');
-  //   }
-  // })
+  });
 });
