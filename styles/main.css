@@ -1181,3 +1181,71 @@ body.taskbar-menu .menu-section {
 
 /* 隐藏状态 */
 .menu-nav-btn.hidden { display: none !important; }
+
+/* 移动端横屏专用：窗口靠右上角 */
+@media (max-height: 600px) and (orientation: landscape),
+       (max-width: 768px) {
+  .window {
+    position: fixed !important;
+    top: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+    bottom: auto !important;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+    z-index: 1000;
+  }
+
+  /* 标题栏：让按钮不参与拖动 */
+  .title-bar {
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 30px; /* 为关闭按钮留空间 */
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    background: #ff5f57;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-weight: bold;
+    cursor: pointer !important;
+    z-index: 1001; /* 确保在最上层 */
+    pointer-events: auto !important; /* 关键：允许点击 */
+  }
+
+  /* 防止拖动时误触按钮 */
+  .title-bar > span {
+    flex: 1;
+    text-align: center;
+    pointer-events: none; /* 标题文字不拦截事件 */
+  }
+}
+
+/* 手机横屏：窗口靠右上角 */
+@media (max-width: 768px) and (orientation: landscape),
+       (max-height: 500px) and (orientation: landscape) {
+  .window {
+    position: fixed !important;
+    top: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+    bottom: auto !important;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  /* 确保关闭按钮可点 */
+  .window-close {
+    z-index: 10;
+    pointer-events: auto; /* 虽然默认是 auto，但强调一下 */
+  }
+}
