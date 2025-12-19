@@ -60,16 +60,23 @@ let isPWAInstallable = false;
 
 let windowBones = null;
 let window3D = null; // 存储场景、相机、渲染器等
+let windowZIndex = 100; // 确保初始值
 
+function bringToFront(windowId) {
+  // 支持传字符串 id 或直接传元素
+  let element;
+  if (typeof windowId === 'string') {
+    element = document.getElementById(windowId);
+  } else if (windowId instanceof HTMLElement) {
+    element = windowId;
+  }
 
-  function bringToFront(windowElement) {
-  const allWindows = document.querySelectorAll('.app-window');
-  let maxZ = 100;
-  allWindows.forEach(w => {
-    const z = parseInt(getComputedStyle(w).zIndex) || 100;
-    if (z > maxZ) maxZ = z;
-  });
-  windowElement.style.zIndex = maxZ + 10;
+  if (!element) {
+    console.warn('bringToFront: 未找到窗口元素', windowId);
+    return;
+  }
+
+  element.style.zIndex = ++windowZIndex;
 }
 
 // 在每个窗口打开时调用
@@ -1113,12 +1120,49 @@ function openAppWindow(appId) {
     'downloads': { emoji: '📥', title: '下载' },
     'documents': { emoji: '📄', title: '文档' },
     'music': { emoji: '🎵', title: '音乐' },
-    'videos': { emoji: '🎬', title: '视频' }
+    'videos': { emoji: '🎬', title: '视频' },
+    'a-drive': { emoji: '💾', title: '软盘 (A:)' },
+  'c-drive': { emoji: '💽', title: '本地磁盘 (C:)' },
   };
   if (appMap[appId]) {
     registerTaskbarWindow(container.id, appMap[appId].emoji, appMap[appId].title);
   }
 }
+
+// ========== 磁盘点击逻辑 ==========
+document.querySelectorAll('.drive-item').forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const drive = item.dataset.drive;
+
+    switch (drive) {
+      case 'a':
+        openAppWindow('a-drive'); // 对应 id="a-drive-window"
+        break;
+      case 'c':
+        openAppWindow('c-drive'); // 对应 id="c-drive-window"
+        break;
+      case 'd':
+        // D 盘对应姿势编辑器（根据你之前的代码）
+        if (!window.poseEditorOpen) {
+          openPoseEditor();
+          window.poseEditorOpen = true;
+        }
+        bringToFront('pose-editor-container');
+        break;
+      case 'e':
+        // E 盘对应进程选择器
+        if (!window.processSelectorOpen) {
+          openProcessSelector();
+          window.processSelectorOpen = true;
+        }
+        bringToFront('process-selector-container');
+        break;
+      default:
+        console.warn('未知磁盘:', drive);
+    }
+  });
+});
 
 function initDesktopIcons() {
   // 桌面图标
@@ -1819,13 +1863,21 @@ function moveToWindowSide() {
   requestAnimationFrame(animate);
 }
 
+
+function centerWindow(el) {
+  const rect = el.getBoundingClientRect();
+  el.style.left = (window.innerWidth / 2 - rect.width / 2) + 'px';
+  el.style.top = (window.innerHeight / 2 - rect.height / 2) + 'px';
+}
+
 // ========== 扩展后的姿势编辑器（D:） ==========
 function openPoseEditor() {
   const container = document.getElementById('pose-editor-container');
   const win = container.querySelector('.app-window');
   
   container.classList.remove('hidden');
-  bringToFront(container);
+  centerWindow(win); // 👈 居中
+  bringToFront(container.id); // ✅ 关键修复：传 id 字符串
 
   // 👇 新增：注册到任务栏
   registerTaskbarWindow('pose-editor-container', '💾', '姿势驱动器 (D:)');
