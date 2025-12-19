@@ -696,7 +696,7 @@ function makeDraggable(win) {
     initialY = rect.top;
     startX = clientX;
     startY = clientY;
-    win.style.pointerEvents = 'none'; // 防止子元素干扰
+    win.style.pointerEvents = 'none';
     titlebar.style.cursor = 'grabbing';
     titlebar.style.userSelect = 'none';
   };
@@ -725,22 +725,30 @@ function makeDraggable(win) {
     }
   };
 
-  // 鼠标事件
+  // 🟢 修改 1：鼠标事件 —— 排除关闭按钮
   titlebar.addEventListener('mousedown', (e) => {
+    // 🔥 关键：如果点击的是关闭按钮（或其子元素），不启动拖拽
+    if (e.target.closest('.window-close')) {
+      return; // 让点击事件正常冒泡到关闭按钮
+    }
     startDrag(e.clientX, e.clientY);
     e.preventDefault();
   });
 
-  // 触摸事件（关键！）
+  // 🟢 修改 2：触摸事件 —— 同样排除关闭按钮
   titlebar.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
+      // 🔥 检查触摸目标是否是关闭按钮
+      if (e.target.closest('.window-close')) {
+        return; // 不阻止默认行为，允许点击
+      }
       const touch = e.touches[0];
       startDrag(touch.clientX, touch.clientY);
       e.preventDefault(); // 阻止滚动
     }
   }, { passive: false });
 
-  // 全局移动/结束（mouse + touch）
+  // 全局移动/结束（保持不变）
   document.addEventListener('mousemove', (e) => doDrag(e.clientX, e.clientY));
   document.addEventListener('mouseup', stopDrag);
 
