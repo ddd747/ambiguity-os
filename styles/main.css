@@ -1249,3 +1249,15 @@ body.taskbar-menu .menu-section {
     pointer-events: auto; /* 虽然默认是 auto，但强调一下 */
   }
 }
+
+/* 动态雨 / 代码雨背景 */
+#rain-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 不阻挡点击桌面图标 */
+  z-index: -1;          /* 在所有窗口和图标下方 */
+  display: none;        /* 默认隐藏 */
+}

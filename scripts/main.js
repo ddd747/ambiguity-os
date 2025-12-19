@@ -872,7 +872,126 @@ function renderTaskbarIcons() {
   });
 }
 
+// ============ 全局声明（安全）============
+let rainActive = false;
+let rainType = 'rain';
+let rainCanvas = null;
+let rainCtx = null;
+
+class RainDrop {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * rainCanvas.width;
+    this.y = Math.random() * -rainCanvas.height;
+    this.speed = 2 + Math.random() * 5;
+    this.length = 5 + Math.random() * 15;
+    this.char = rainType === 'matrix' 
+      ? '01'[Math.floor(Math.random() * 2)] 
+      : '';
+  }
+  update() {
+    this.y += this.speed;
+    if (this.y > rainCanvas.height) {
+      this.reset();
+    }
+  }
+  draw() {
+    const ctx = rainCtx;
+    if (rainType === 'matrix') {
+      ctx.fillStyle = '#0f0';
+      ctx.font = '14px monospace';
+      ctx.fillText(this.char, this.x, this.y);
+    } else if (rainType === 'rain') {
+      ctx.strokeStyle = 'rgba(173, 216, 230, 0.8)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.x, this.y + this.length);
+      ctx.stroke();
+    }
+  }
+}
+
+const rainDrops = [];
+
+function initRain() {
+  rainDrops.length = 0;
+  const count = Math.floor(rainCanvas.width / 4);
+  for (let i = 0; i < count; i++) {
+    rainDrops.push(new RainDrop());
+  }
+}
+
+function animateRain() {
+  if (!rainActive) return;
+  const ctx = rainCtx;
+  ctx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
+
+  if (rainType === 'matrix') {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.fillRect(0, 0, rainCanvas.width, rainCanvas.height);
+  }
+
+  for (const drop of rainDrops) {
+    drop.update();
+    drop.draw();
+  }
+  requestAnimationFrame(animateRain);
+}
+
+function setRainActive(active, type = 'rain') {
+  rainActive = active;
+  rainType = type;
+
+  if (active) {
+    rainCanvas.style.display = 'block';
+    initRain();
+    animateRain();
+  } else {
+    rainCanvas.style.display = 'none';
+  }
+}
+
+function resizeRainCanvas() {
+  if (!rainCanvas) return;
+  rainCanvas.width = window.innerWidth;
+  rainCanvas.height = window.innerHeight;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // 1. 获取 canvas（现在 DOM 已就绪！）
+  rainCanvas = document.getElementById('rain-canvas');
+  if (rainCanvas) {
+    rainCtx = rainCanvas.getContext('2d');
+    resizeRainCanvas();
+    window.addEventListener('resize', resizeRainCanvas);
+  }
+
+  // 2. 读取用户壁纸设置
+  const savedWallpaper = localStorage.getItem('wallpaper') || 'bliss';
+
+  if (savedWallpaper === 'matrix') {
+    setRainActive(true, 'matrix');
+    document.body.style.backgroundImage = 'none';
+    document.body.style.backgroundColor = '#000';
+  } 
+  else if (savedWallpaper === 'rainx') {
+    setRainActive(true, 'rain');
+    document.body.style.backgroundImage = 'none';
+    document.body.style.backgroundColor = '#1a3c6e';
+  }
+  else if (savedWallpaper === 'void') {
+    document.body.style.backgroundImage = 'none';
+    document.body.style.backgroundColor = '#000';
+  } 
+  else {
+    // bliss
+    document.body.style.backgroundImage = "url('https://os.my-roommate.xyz/assets/images/bliss.jpg')";
+    document.body.style.backgroundColor = '';
+  }
+  
   // >>>>> 【新增】首次启动检测 + 调试 <<<<<
   const setupCompleted = localStorage.getItem('ambiguityos:setup_completed');
   console.log('🔍 main.js loaded. Checking setup status...');
