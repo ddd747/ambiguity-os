@@ -463,10 +463,23 @@ html, body {
 }
 
 /* 手机上保留滚动条（方便操作） */
+/* 手机上确保窗口内容可滚动 */
 @media (max-width: 768px) {
   .app-window {
-    scrollbar-width: thin;
-    /* WebKit 浏览器会自动显示，无需额外设置 */
+    max-height: 85vh;
+    max-width: 95vw;
+  }
+  .window-content {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* iOS 惯性滚动 */
+  }
+  /* 可选：显示细滚动条 */
+  .window-content::-webkit-scrollbar {
+    width: 6px;
+  }
+  .window-content::-webkit-scrollbar-thumb {
+    background: #aaa;
+    border-radius: 3px;
   }
 }
 

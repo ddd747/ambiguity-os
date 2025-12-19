@@ -680,26 +680,82 @@ function joinNetworkRoom() {
 }
 
 
-function makeDraggable(element) {
-  const titleBar = element.querySelector('.window-titlebar');
-  if (!titleBar) return;
-  let isDragging = false, offsetX, offsetY;
-  titleBar.addEventListener('mousedown', (e) => {
+// ========== 增强版拖拽（支持 mouse + touch） ==========
+function makeDraggable(win) {
+  if (!win || win.dataset.dragInitialized) return;
+  const titlebar = win.querySelector('.window-titlebar');
+  if (!titlebar) return;
+
+  let isDragging = false;
+  let startX, startY, initialX, initialY;
+
+  const startDrag = (clientX, clientY) => {
     isDragging = true;
-    offsetX = e.clientX - element.getBoundingClientRect().left;
-    offsetY = e.clientY - element.getBoundingClientRect().top;
-    element.style.opacity = '0.9';
-    bringToFront(element);
-  });
-  document.addEventListener('mousemove', (e) => {
+    const rect = win.getBoundingClientRect();
+    initialX = rect.left;
+    initialY = rect.top;
+    startX = clientX;
+    startY = clientY;
+    win.style.pointerEvents = 'none'; // 防止子元素干扰
+    titlebar.style.cursor = 'grabbing';
+    titlebar.style.userSelect = 'none';
+  };
+
+  const doDrag = (clientX, clientY) => {
     if (!isDragging) return;
-    element.style.left = Math.max(0, e.clientX - offsetX) + 'px';
-    element.style.top = Math.max(0, e.clientY - offsetY) + 'px';
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    let newX = initialX + dx;
+    let newY = initialY + dy;
+
+    // 边界限制
+    newX = Math.max(0, Math.min(newX, window.innerWidth - win.offsetWidth));
+    newY = Math.max(0, Math.min(newY, window.innerHeight - win.offsetHeight));
+
+    win.style.left = newX + 'px';
+    win.style.top = newY + 'px';
+  };
+
+  const stopDrag = () => {
+    if (isDragging) {
+      isDragging = false;
+      win.style.pointerEvents = '';
+      titlebar.style.cursor = '';
+      titlebar.style.userSelect = '';
+    }
+  };
+
+  // 鼠标事件
+  titlebar.addEventListener('mousedown', (e) => {
+    startDrag(e.clientX, e.clientY);
+    e.preventDefault();
   });
-  document.addEventListener('mouseup', () => {
-    isDragging = false;
-    element.style.opacity = '1';
-  });
+
+  // 触摸事件（关键！）
+  titlebar.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      startDrag(touch.clientX, touch.clientY);
+      e.preventDefault(); // 阻止滚动
+    }
+  }, { passive: false });
+
+  // 全局移动/结束（mouse + touch）
+  document.addEventListener('mousemove', (e) => doDrag(e.clientX, e.clientY));
+  document.addEventListener('mouseup', stopDrag);
+
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      doDrag(touch.clientX, touch.clientY);
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend', stopDrag);
+  document.addEventListener('touchcancel', stopDrag);
+
+  win.dataset.dragInitialized = 'true';
 }
 
 // 存储已绑定的监听器引用（便于移除）
@@ -992,45 +1048,67 @@ acceptBtn.addEventListener('click', () => {
   }
 
   // ========== 桌面图标交互 ==========
+  // ========== 打开应用窗口（增强版：适配手机） ==========
 function openAppWindow(appId) {
-  const win = document.getElementById(appId + '-window');
+  const container = document.getElementById(appId + '-window');
+  if (!container) return;
+
+  const win = container.querySelector('.app-window');
   if (!win) return;
 
-  win.classList.remove('hidden');
-  bringToFront(win.querySelector('.app-window'));
-  makeDraggable(win);
+  // 显示窗口
+  container.classList.remove('hidden');
+  bringToFront(win);
 
-  // 👇 新增：注册到任务栏（带 Emoji）
+  // 👇 初始化拖拽（仅一次）
+  if (!container.dataset.dragInitialized) {
+    makeDraggable(win);
+    container.dataset.dragInitialized = 'true';
+  }
+
+  // 👇 关键：动态居中窗口（适配手机横屏/竖屏）
+  setTimeout(() => {
+    // 强制获取真实尺寸
+    const rect = win.getBoundingClientRect();
+    const maxWidth = Math.min(window.innerWidth * 0.95, 600); // 最大宽度
+    const maxHeight = window.innerHeight * 0.85; // 避开任务栏
+
+    // 调整窗口尺寸（如果太宽/太高）
+    if (rect.width > maxWidth) {
+      win.style.width = maxWidth + 'px';
+    }
+    if (rect.height > maxHeight) {
+      win.style.height = 'auto'; // 允许高度自适应
+      win.style.maxHeight = maxHeight + 'px';
+    }
+
+    // 计算居中位置
+    const x = Math.max(10, Math.min(
+      (window.innerWidth - win.offsetWidth) / 2,
+      window.innerWidth - win.offsetWidth - 10
+    ));
+    const y = Math.max(10, Math.min(
+      (window.innerHeight - win.offsetHeight) / 2,
+      window.innerHeight - win.offsetHeight - 60 // 底部留出任务栏空间
+    ));
+
+    win.style.left = x + 'px';
+    win.style.top = y + 'px';
+    win.style.transform = 'none'; // 移除可能的 transform 居中
+  }, 50);
+
+  // 👇 注册到任务栏（带 Emoji）
   const appMap = {
     'my-computer': { emoji: '💻', title: '我的电脑' },
     'recycle-bin': { emoji: '🗑️', title: '回收站' },
-    'ie': { emoji: '🇮🇪​', title: 'Internet Explorer' },
-    // 可继续扩展...
+    'ie': { emoji: '🇮🇪 ', title: 'Internet Explorer' },
+    'downloads': { emoji: '📥', title: '下载' },
+    'documents': { emoji: '📄', title: '文档' },
+    'music': { emoji: '🎵', title: '音乐' },
+    'videos': { emoji: '🎬', title: '视频' }
   };
-
   if (appMap[appId]) {
-    registerTaskbarWindow(win.id, appMap[appId].emoji, appMap[appId].title);
-  }
-
-  // ========== 特殊初始化：我的电脑 ==========
-  if (appId === 'my-computer') {
-    if (!win.dataset.initialized) {
-      win.querySelectorAll('.drive-item[data-drive]').forEach(disk => {
-        disk.addEventListener('click', () => {
-          const d = disk.getAttribute('data-drive');
-          if (d === 'c') {
-            alert('【C盘】\n\n这是系统核心。\n双击文件夹以进入。');
-          } else if (d === 'e') {
-            openProcessSelector();
-          } else if (d === 'd') {
-            openPoseEditor();
-          } else {
-            alert(`打开 ${disk.textContent}...`);
-          }
-        });
-      });
-      win.dataset.initialized = 'true';
-    }
+    registerTaskbarWindow(container.id, appMap[appId].emoji, appMap[appId].title);
   }
 }
 
