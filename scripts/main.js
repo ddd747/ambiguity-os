@@ -1718,75 +1718,134 @@ document.getElementById('chinese-bone-names-toggle')?.addEventListener('change',
 
 // ========== 进程选择器（E盘功能） ==========
 function openProcessSelector() {
-  console.log('🟢 Opening E Drive, confirmBtn bound:', document.getElementById('confirm-select-btn')?.dataset.bound);
   const container = document.getElementById('process-selector-container');
-  const win = container.querySelector('.app-window');
   const listEl = document.getElementById('character-list');
-
-  // 👇 强制重置按钮状态（无论之前如何关闭）
-  const confirmBtn = document.getElementById('confirm-select-btn');
-  const cancelBtn = document.getElementById('cancel-select-btn');
-  if (confirmBtn) {
-    confirmBtn.replaceWith(confirmBtn.cloneNode(true)); // 👈 彻底重置
-  }
-  if (cancelBtn) {
-    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-  }
-
-  // 👇 新增：注册到任务栏
-  registerTaskbarWindow('process-selector-container', '⚙️', '进程选择器 (E:)');
-
-  // 渲染角色列表（安全：每次重建）
-  const available = ['通用', 'Windown'];
-  if (localStorage.getItem('ambiguity-gap:unlocked-zhao')) available.push('赵雅懿');
-  if (localStorage.getItem('ambiguity-gap:unlocked-luolie')) available.push('逻裂体');
-
-  listEl.innerHTML = '';
-  available.forEach((name, i) => {
-    const label = document.createElement('label');
-    label.style.display = 'block';
-    label.style.margin = '6px 0';
-    label.innerHTML = `
-      <input type="radio" name="selected-char" value="${name}" ${i === 0 ? 'checked' : ''}>
-      ${name}
-    `;
-    listEl.appendChild(label);
-  });
 
   // 显示窗口
   container.classList.remove('hidden');
   bringToFront(container);
+  registerTaskbarWindow('process-selector-container', '⚙️', '进程选择器 (E:)');
 
-  // 初始化拖拽（仅一次）
+  // 初始化拖拽
+  const win = container.querySelector('.app-window');
   if (!container.dataset.dragInitialized) {
     makeDraggable(win);
     container.dataset.dragInitialized = 'true';
   }
 
-  if (!confirmBtn.dataset.bound) {
-    const handler = () => {
-      const selected = document.querySelector('input[name="selected-char"]:checked');
-      if (selected) {
-        const char = selected.value;
-        localStorage.setItem('ambiguity-gap:selected-character', char);
-        localStorage.setItem('ambiguity-gap:trust', '50');
-        alert(`✅ 主进程已设为：${char}\n现在可启动《歧义裂隙》！`);
-      }
-      container.classList.add('hidden'); // 👈 直接隐藏，依赖统一关闭逻辑
-    };
-    confirmBtn.addEventListener('click', handler);
-    confirmBtn.dataset.bound = 'true'; // 标记已绑定
-  }
+  // ========== 读取帮助按钮点击次数 ==========
+  let helpClickCount = parseInt(localStorage.getItem('e-drive-help-click-count') || '0');
+  const maxCount = 5;
 
-  if (!cancelBtn.dataset.bound) {
-    const handler = () => {
-      container.classList.add('hidden');
-    };
-    cancelBtn.addEventListener('click', handler);
-    cancelBtn.dataset.bound = 'true';
-  }
+  // ========== 渲染角色列表（8人寝）==========
+  const allCharacters = [
+    { id: 'generic', name: '通用', unlocked: true },
+    { id: 'windown', name: 'Windown', unlocked: true },
+    { id: 'zhao', name: '赵雅懿', unlocked: !!localStorage.getItem('ambiguity-gap:unlocked-zhao') },
+    { id: 'luolie', name: '逻裂体', unlocked: !!localStorage.getItem('ambiguity-gap:unlocked-luolie') },
+    // 👇 第5个：［意念］——根据 helpClickCount 决定是否解锁
+    { 
+      id: 'yinian', 
+      name: '［意念］', 
+      unlocked: helpClickCount >= 5 // ✅ 第5次起自动解锁
+    },
+    { id: 'future1', name: '新舍友A', unlocked: false },
+    { id: 'future2', name: '新舍友B', unlocked: false },
+    { id: 'future3', name: '新舍友C', unlocked: false }
+  ];
+
+  // 清空角色列表
+  listEl.innerHTML = '';
+
+  // 渲染角色
+  allCharacters.forEach(char => {
+    const isUnlocked = char.unlocked;
+    const label = document.createElement('label');
+    label.style.display = 'flex';
+    label.style.alignItems = 'center';
+    label.style.margin = '8px 0';
+    label.style.opacity = isUnlocked ? '1' : '0.5';
+    label.title = isUnlocked ? '' : '🔒 需完成入住手续才能选择';
+
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'selected-char';
+    radio.value = char.name;
+    radio.disabled = !isUnlocked;
+
+    const span = document.createElement('span');
+    span.textContent = char.name;
+    span.style.marginLeft = '8px';
+
+    label.appendChild(radio);
+    label.appendChild(span);
+    listEl.appendChild(label);
+  });
+
+  // 默认选中第一个已解锁角色
+  const firstUnlocked = listEl.querySelector('input:not([disabled])');
+  if (firstUnlocked) firstUnlocked.checked = true;
+
+  // ========== 移除旧的帮助按钮（避免重复）==========
+  const existingHelpBtn = container.querySelector('#e-drive-help-btn');
+  if (existingHelpBtn) existingHelpBtn.remove();
+
+  // ========== 创建新的帮助按钮 ==========
+  const helpBtn = document.createElement('button');
+  helpBtn.id = 'e-drive-help-btn'; // 唯一ID，便于清理
+  helpBtn.textContent = '❓ 如何添加新舍友？';
+  helpBtn.style.marginTop = '16px';
+  helpBtn.style.padding = '6px 12px';
+
+  // 定义5阶段提示文案
+  const messages = [
+    '前往「我的电脑 → 下载」获取角色安装包，并运行“入住手续.exe”完成激活。',
+    '我说：前往「我的电脑 → 下载」获取角色安装包，并运行“入住手续.exe”完成激活。',
+    '事不过三啊……到「我的电脑 → 下载」，然后运行“入住手续.exe”',
+    '不是？你怎么这么执着啊？',
+    '你好像，还挺有趣的？'
+  ];
+
+  helpBtn.onclick = () => {
+    helpClickCount++; // 每点一次 +1
+    localStorage.setItem('e-drive-help-click-count', helpClickCount.toString());
+
+    const index = Math.min(helpClickCount - 1, 4); // 最大索引为4（第5条）
+    const msg = messages[index];
+
+    alert(msg);
+
+    // 如果是第5次或之后，且［意念］刚被解锁，可以额外提示
+    if (helpClickCount >= 5 && !allCharacters[4].unlocked) {
+      // 实际上 allCharacters 是局部变量，这里只是逻辑示意
+      // 真正的解锁状态由 localStorage 控制，下次打开会生效
+    }
+  };
+
+  // 插入按钮
+  listEl.parentNode.insertBefore(helpBtn, listEl.nextSibling);
 }
 
+// 在 DOMContentLoaded 回调中（只执行一次）
+document.getElementById('confirm-select-btn')?.addEventListener('click', () => {
+  const selected = document.querySelector('#process-selector-container input[name="selected-char"]:checked');
+  if (!selected) {
+    alert('请先选择一个角色！');
+    return;
+  }
+  
+  const char = selected.value;
+  localStorage.setItem('ambiguity-gap:selected-character', char);
+  localStorage.setItem('ambiguity-gap:trust', '50');
+  
+  // 隐藏窗口
+  document.getElementById('process-selector-container').classList.add('hidden');
+  alert(`✅ 主进程已设为：${char}\n现在可启动《歧义裂隙》！`);
+});
+
+document.getElementById('cancel-select-btn')?.addEventListener('click', () => {
+  document.getElementById('process-selector-container').classList.add('hidden');
+});
 
 // ========== 3D Window 舍友 ==========
 function initWindow3D() {
