@@ -1017,13 +1017,13 @@ function applyFilterEffect() {
   setRainActive(false);
 
   if (savedWallpaper === 'bliss') {
-    overlay.style.display = 'none'; // 确保不是 block
+    overlay.style.display = 'none'; 
   } else if (savedWallpaper === 'matrix') {
     setRainActive(true, 'matrix');
-    overlay.style.display = 'none'; // 确保不是 block
+    overlay.style.display = 'none'; 
   } else if (savedWallpaper === 'rainx') {
     setRainActive(true, 'rain');
-    overlay.style.display = 'none'; // 确保不是 block
+    overlay.style.display = 'none'; 
   } else if (savedWallpaper === 'void') {
     overlay.style.display = 'block'; // 确保不是 none
     overlay.classList.add('show');
@@ -1292,7 +1292,7 @@ function openAppWindow(appId) {
   const appMap = {
     'my-computer': { emoji: '💻', title: '我的电脑' },
     'recycle-bin': { emoji: '🗑️', title: '回收站' },
-    'ie': { emoji: '🇮🇪 ', title: 'Internet Explorer' },
+    'ie': { emoji: 'ⓔ ', title: 'Internet Explorer' },
     'downloads': { emoji: '📥', title: '下载' },
     'documents': { emoji: '📄', title: '文档' },
     'music': { emoji: '🎵', title: '音乐' },
