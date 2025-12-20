@@ -779,24 +779,20 @@ let poseEditorListeners = [];
 function cleanupPoseEditor() {
   // 1. 移除所有事件监听器
   poseEditorListeners.forEach(({ el, type, fn }) => {
-    el.removeEventListener(type, fn);
+    if (el?.removeEventListener) el.removeEventListener(type, fn);
   });
-  poseEditorListeners = [];
+  poseEditorListeners = []; // 👈 必须清空数组！
 
-  // 2. 清空骨骼控制数据
+  // 2. 清空骨骼控制
   activeBoneControls = [];
 
-  // 3. 清空动态滑块区域（可选）
+  // 3. 清空滑块区域
   const slidersContainer = document.getElementById('dynamic-sliders');
-  if (slidersContainer) {
-    slidersContainer.innerHTML = '';
-  }
+  if (slidersContainer) slidersContainer.innerHTML = '';
 
-  // 4. 重置拖拽状态（如果 makeDraggable 有副作用）
+  // 4. 重置拖拽标记
   const container = document.getElementById('pose-editor-container');
-  if (container) {
-    delete container.dataset.dragInitialized;
-  }
+  if (container) delete container.dataset.dragInitialized;
 }
 
 // 临时消息提示（轻量级，无需额外 DOM）
@@ -1320,19 +1316,11 @@ document.querySelectorAll('.drive-item').forEach(item => {
         break;
       case 'd':
         // D 盘对应姿势编辑器（根据你之前的代码）
-        if (!window.poseEditorOpen) {
-          openPoseEditor();
-          window.poseEditorOpen = true;
-        }
-        bringToFront('pose-editor-container');
+        openPoseEditor();
         break;
       case 'e':
         // E 盘对应进程选择器
-        if (!window.processSelectorOpen) {
           openProcessSelector();
-          window.processSelectorOpen = true;
-        }
-        bringToFront('process-selector-container');
         break;
       default:
         console.warn('未知磁盘:', drive);
@@ -1411,25 +1399,20 @@ document.querySelectorAll('.menu-item').forEach(item => {
   });
 });
 
-  // 全局关闭按钮处理（含任务栏同步）
+// 全局关闭按钮处理
 document.addEventListener('click', (e) => {
   if (!e.target.classList.contains('window-close')) return;
-
   const container = e.target.closest('.window-container');
-  if (!container || !container.id) {
-    console.warn('❌ 关闭按钮未关联有效 window-container');
-    return;
-  }
+  if (!container || !container.id) return;
 
-  // 隐藏窗口
   container.classList.add('hidden');
 
   // 👇 关键：注销任务栏图标
   unregisterTaskbarWindow(container.id);
 
-  // 特殊清理
+  // 👇 特殊清理
   if (container.id === 'pose-editor-container') {
-    cleanupPoseEditor();
+    cleanupPoseEditor(); // ✅ 现在会正确清理
   }
 });
 }
@@ -1735,9 +1718,20 @@ document.getElementById('chinese-bone-names-toggle')?.addEventListener('change',
 
 // ========== 进程选择器（E盘功能） ==========
 function openProcessSelector() {
+  console.log('🟢 Opening E Drive, confirmBtn bound:', document.getElementById('confirm-select-btn')?.dataset.bound);
   const container = document.getElementById('process-selector-container');
   const win = container.querySelector('.app-window');
   const listEl = document.getElementById('character-list');
+
+  // 👇 强制重置按钮状态（无论之前如何关闭）
+  const confirmBtn = document.getElementById('confirm-select-btn');
+  const cancelBtn = document.getElementById('cancel-select-btn');
+  if (confirmBtn) {
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true)); // 👈 彻底重置
+  }
+  if (cancelBtn) {
+    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+  }
 
   // 👇 新增：注册到任务栏
   registerTaskbarWindow('process-selector-container', '⚙️', '进程选择器 (E:)');
@@ -1768,10 +1762,6 @@ function openProcessSelector() {
     makeDraggable(win);
     container.dataset.dragInitialized = 'true';
   }
-
-  // ========== 关键：使用 addEventListener + 标志位防重复 ==========
-  const confirmBtn = document.getElementById('confirm-select-btn');
-  const cancelBtn = document.getElementById('cancel-select-btn');
 
   if (!confirmBtn.dataset.bound) {
     const handler = () => {
@@ -2088,6 +2078,13 @@ function centerWindow(el) {
 
 // ========== 扩展后的姿势编辑器（D:） ==========
 function openPoseEditor() {
+  console.log('🟢 Opening D Drive, activeBoneControls length:', activeBoneControls.length);
+// 防御：如果已打开，直接聚焦（不重复初始化）
+if (!document.getElementById('pose-editor-container').classList.contains('hidden')) {
+  bringToFront('pose-editor-container');
+  return;
+}
+
   const container = document.getElementById('pose-editor-container');
   const win = container.querySelector('.app-window');
   
