@@ -954,46 +954,103 @@ function setRainActive(active, type = 'rain') {
   }
 }
 
+// ============ 新增：安全创建 canvas ============
+function ensureRainCanvas() {
+  let canvas = document.getElementById('rain-canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'rain-canvas';
+    // 👇 关键：全屏 + 不阻挡点击
+    canvas.style.cssText = `
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 2147483647; /* 最顶层 */
+      pointer-events: none; /* 👈 允许点击穿透！ */
+      display: none;        /* 初始隐藏 */
+    `;
+    document.body.appendChild(canvas);
+  }
+  return canvas;
+}
+
 function resizeRainCanvas() {
   if (!rainCanvas) return;
   rainCanvas.width = window.innerWidth;
   rainCanvas.height = window.innerHeight;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // 1. 获取 canvas（现在 DOM 已就绪！）
-  rainCanvas = document.getElementById('rain-canvas');
-  if (rainCanvas) {
+function ensureFilterOverlay() {
+  let overlay = document.getElementById('filter-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'filter-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 2147483646; /* 比 rain-canvas 低 1 */
+      pointer-events: none;
+      display: none;
+    `;
+    document.body.appendChild(overlay);
+  }
+  return overlay;
+}
+
+function applyFilterEffect() {
+  const savedWallpaper = localStorage.getItem('ambiguityos:wallpaper') || 'bliss';
+  console.log('🖼️ 当前壁纸:', savedWallpaper);
+
+  // 确保 canvas 存在（双重保险）
+  if (!rainCanvas) {
+    rainCanvas = ensureRainCanvas();
     rainCtx = rainCanvas.getContext('2d');
-    resizeRainCanvas();
-    window.addEventListener('resize', resizeRainCanvas);
   }
 
-  // 2. 读取用户壁纸设置
-  const savedWallpaper = localStorage.getItem('wallpaper') || 'bliss';
+  // 处理 void 暗化层（同样动态创建）
+  const overlay = ensureFilterOverlay(); // 你已有的函数
 
-  if (savedWallpaper === 'matrix') {
+  // 隐藏所有
+  overlay.classList.remove('show');
+  setRainActive(false);
+
+  if (savedWallpaper === 'bliss') {
+    overlay.style.display = 'none'; // 确保不是 block
+  } else if (savedWallpaper === 'matrix') {
     setRainActive(true, 'matrix');
-    document.body.style.backgroundImage = 'none';
-    document.body.style.backgroundColor = '#000';
-  } 
-  else if (savedWallpaper === 'rainx') {
+    overlay.style.display = 'none'; // 确保不是 block
+  } else if (savedWallpaper === 'rainx') {
     setRainActive(true, 'rain');
-    document.body.style.backgroundImage = 'none';
-    document.body.style.backgroundColor = '#1a3c6e';
+    overlay.style.display = 'none'; // 确保不是 block
+  } else if (savedWallpaper === 'void') {
+    overlay.style.display = 'block'; // 确保不是 none
+    overlay.classList.add('show');
   }
-  else if (savedWallpaper === 'void') {
-    document.body.style.backgroundImage = 'none';
-    document.body.style.backgroundColor = '#000';
-  } 
-  else {
-    // bliss
-    document.body.style.backgroundImage = "url('https://os.my-roommate.xyz/assets/images/bliss.jpg')";
-    document.body.style.backgroundColor = '';
-  }
-  
-  // >>>>> 【新增】首次启动检测 + 调试 <<<<<
+
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // 👇 替换原 canvas 获取逻辑
+  rainCanvas = ensureRainCanvas();
+  rainCtx = rainCanvas.getContext('2d');
+  resizeRainCanvas();
+  window.addEventListener('resize', resizeRainCanvas);
+
+  const savedWallpaper = localStorage.getItem('ambiguityos:wallpaper') || 'bliss';
+  console.log('🖼️ 当前壁纸:', savedWallpaper);
+
   const setupCompleted = localStorage.getItem('ambiguityos:setup_completed');
+  console.log('🔍 Setup status:', setupCompleted);
+
+  if (setupCompleted !== 'true') {
+    window.location.href = './setup-wizard.html';
+    return;
+  }
+
+  // >>>>> 【新增】首次启动检测 + 调试 <<<<<
+  // 👇 关键：应用滤镜（启动雨）
   console.log('🔍 main.js loaded. Checking setup status...');
   console.log('ambiguityos:setup_completed =', setupCompleted);
 
@@ -1003,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   console.log('✅ Setup confirmed. Proceeding to boot...');
-
+  applyFilterEffect();
   // 读取用户名（默认 fallback 到“舍友”）
   const savedName = localStorage.getItem('ambiguityos:accountName') || '舍友';
   // 替换开始菜单中的文本
@@ -1312,7 +1369,7 @@ document.querySelectorAll('.menu-item').forEach(item => {
         localStorage.removeItem('ambiguityos:setup_completed');
         // 可选：清除其他 setup 数据（保留角色等）
         // localStorage.removeItem('ambiguityos:accountName');
-        // localStorage.removeItem('ambiguityos:wallpaper');
+        localStorage.removeItem('ambiguityos:wallpaper');
         // ...
         alert('即将重启安装向导...');
         window.location.href = './setup-wizard.html';
@@ -1330,6 +1387,10 @@ document.querySelectorAll('.menu-item').forEach(item => {
     } else if (app === 'videos') {
       openAppWindow('videos');
     } 
+    // 👇 新增：处理更换壁纸
+    else if (app === 'pictures') {
+      changeWallpaper();
+    }
     // 原有逻辑
     else if (app === 'my-documents') {
       openAppWindow('my-documents');
@@ -1390,6 +1451,42 @@ function loadDefaultPose() {
       }
     } catch (e) {
       console.warn('加载默认姿势失败', e);
+    }
+  }
+}
+
+function changeWallpaper() {
+  const options = [
+    { name: 'Bliss（蓝天草地）', value: 'bliss' },
+    { name: 'Matrix（代码雨）', value: 'matrix' },
+    { name: '雨（out Windows）', value: 'rainx' },
+    { name: 'Void（暗色）', value: 'void' }
+  ];
+
+  const current = localStorage.getItem('ambiguityos:wallpaper') || 'bliss';
+  let listHtml = '<ul style="padding:0; margin:0; list-style:none;">';
+  options.forEach(opt => {
+    const checked = opt.value === current ? '✓ ' : '';
+    listHtml += `<li style="padding:6px 12px; cursor:pointer;" data-value="${opt.value}">
+      ${checked}${opt.name}
+    </li>`;
+  });
+  listHtml += '</ul>';
+
+  // 创建临时对话框（复用系统消息样式，或简单 alert 替代）
+  const choice = prompt(
+    '请选择壁纸：\n' +
+    options.map((opt, i) => `${i+1}. ${opt.name}`).join('\n'),
+    '输入编号 (1-4)'
+  );
+
+  if (choice) {
+    const index = parseInt(choice, 10) - 1;
+    if (index >= 0 && index < options.length) {
+      const selected = options[index].value;
+      localStorage.setItem('ambiguityos:wallpaper', selected);
+      applyFilterEffect(); // 👈 立即生效！
+      showTemporaryMessage(` Wallpaper changed to: ${options[index].name}`, '#4CAF50');
     }
   }
 }
@@ -2164,7 +2261,6 @@ document.getElementById('pose-reset-btn')?.addEventListener('click', resetFullPo
 updateCameraDisplay();
 
 }); // End of DOMContentLoaded
-
 
 function showInstallHint() {
   const hint = document.getElementById('install-hint');
