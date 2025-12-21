@@ -432,15 +432,10 @@ function applySavedPose() {
   }
 }
 
-// 保存姿势（按舍友 ID 区分）
+// 原有函数增强版（覆盖原来的 saveFullPose）
 function saveFullPose() {
-  localStorage.removeItem('ambiguity-gap:default-pose');
-  const key = `ambiguity-gap:pose-${currentRoommateId || 'default'}`; // 👈 必须和 applySavedPose 一致！
-
-  // 获取骨骼值（通过 ID 安全读取）
   const boneControls = activeBoneControls.map(ctrl => {
-    const el = document.getElementById(ctrl.id) || 
-               document.getElementById(`${ctrl.id}-input`);
+    const el = document.getElementById(ctrl.id) || document.getElementById(`${ctrl.id}-input`);
     return {
       boneName: ctrl.boneName,
       axis: ctrl.axis,
@@ -449,18 +444,172 @@ function saveFullPose() {
   });
 
   const poseData = {
+    modelId: currentRoommateId,
     boneControls,
     cameraPosition: {
       x: cameraPosition.x,
       y: cameraPosition.y,
       z: cameraPosition.z
     },
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    version: '2.1'
   };
-    
-  localStorage.setItem(key, JSON.stringify(poseData));
-  showTemporaryMessage('姿势已保存', '#4CAF50');
+
+  // 保存为“默认姿势”
+  localStorage.setItem('ambiguity-gap:default-pose', JSON.stringify(poseData));
+  
+  // 同时作为最新备份
+  localStorage.setItem('ambiguity-gap:latest-pose-backup', JSON.stringify(poseData));
+
+  showTemporaryMessage('✅ 默认姿势已保存', '#4CAF50');
 }
+//刻录CD并命名
+function saveNamedPoseAsCD() {
+  const name = prompt('请输入姿势名称（将用于文件名）：', 'my_custom_pose');
+  if (!name || !name.trim()) return;
+
+  const poseName = name.trim();
+  const key = `ambiguity-gap:pose:${poseName}`;
+
+  const boneControls = activeBoneControls.map(ctrl => {
+    const el = document.getElementById(ctrl.id) || document.getElementById(`${ctrl.id}-input`);
+    return {
+      boneName: ctrl.boneName,
+      axis: ctrl.axis,
+      value: el ? parseFloat(el.value) : 0
+    };
+  });
+
+  const poseData = {
+    modelId: currentRoommateId,
+    boneControls,
+    cameraPosition: {
+      x: cameraPosition.x,
+      y: cameraPosition.y,
+      z: cameraPosition.z
+    },
+    timestamp: Date.now(),
+    version: '2.1',
+    name: poseName // 便于识别
+  };
+
+  // 1. 保存到 localStorage（方便快速加载）
+  localStorage.setItem(key, JSON.stringify(poseData));
+
+  // 2. 下载为 .json 文件（“刻录CD”）
+  const blob = new Blob([JSON.stringify(poseData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `AmbiguityOS_CD_${poseName}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+
+  showTemporaryMessage(`💿 已刻录CD: "${poseName}"`, '#9C27B0');
+}
+//文件读取逻辑
+function loadPoseFromCD(file) {
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.modelId || !Array.isArray(data.boneControls)) {
+        throw new Error('无效的姿势CD文件');
+      }
+
+      const targetModel = data.modelId;
+      const currentModel = globalWindow.currentRoommateId;
+
+      // ✅ 如果模型不同，先加载新模型
+      if (targetModel !== currentModel) {
+        if (!ROOMMATES[targetModel]) {
+          throw new Error(`未知舍友: ${targetModel}`);
+        }
+        // ⏳ 等待模型加载完成
+        await loadRoommate(targetModel);
+      }
+
+      // 🕒 等待 UI 更新（确保滑块容器已清空）
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // 恢复相机
+      if (data.cameraPosition) {
+        globalWindow.cameraPosition.x = data.cameraPosition.x ?? 0;
+        globalWindow.cameraPosition.y = data.cameraPosition.y ?? 1.5;
+        globalWindow.cameraPosition.z = data.cameraPosition.z ?? 5;
+        updateCameraDisplay();
+        updateCameraPosition();
+      }
+
+      // 清空并重建滑块
+      globalWindow.activeBoneControls = [];
+      const container = document.getElementById('dynamic-sliders');
+      if (container) container.innerHTML = '';
+
+      data.boneControls.forEach(ctrl => {
+        addBoneControlFromSaved(ctrl.boneName, ctrl.axis, ctrl.value);
+      });
+
+      const name = data.name || '未知姿势';
+      alert(`✅ 已加载 "${name}"（模型: ${ROOMMATES[targetModel]?.name || targetModel}）`);
+
+    } catch (err) {
+      console.error('CD加载失败:', err);
+      alert(`❌ 加载失败：${err.message}`);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// 绑定“导入CD”按钮
+document.getElementById('load-cd-btn')?.addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (file) loadPoseFromCD(file);
+  };
+  input.click();
+});
+function downloadPoseAsFile(name, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: 'application/json'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `AmbiguityOS_Pose_${name}.json`; // 或 .txt
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+// 填充舍友选择下拉框,用 JS 动态填充 <select>
+function populateRoommateSelector() {
+  const select = document.getElementById('roommate-selector');
+  if (!select) return;
+
+  select.innerHTML = '';
+  for (const [id, config] of Object.entries(ROOMMATES)) {
+    const option = document.createElement('option');
+    option.value = id;
+    option.textContent = config.name || id;
+    if (globalWindow.currentRoommateId === id) {
+      option.selected = true;
+    }
+    select.appendChild(option);
+  }
+}
+
+// 初始化时调用
+populateRoommateSelector();
 
 // 通用提示函数（复用现有系统弹窗）
 function showSystemMessage(text, duration = 2000) {
@@ -563,6 +712,11 @@ function updateBoneDisplay(id) {
 }
 
 async function loadRoommate(roommateId) {
+  // 如果已经是当前模型，跳过
+  if (globalWindow.currentRoommateId === roommateId && window.currentModel) {
+    console.log(`⏭️ ${roommateId} 已加载，跳过`);
+    return;
+  }
   const config = ROOMMATES[roommateId];
   if (!config) return;
 
@@ -640,6 +794,7 @@ async function loadRoommate(roommateId) {
   applySavedPose();
   updateCameraPosition(); // 👈 确保执行
   }, 100);
+  globalWindow.currentRoommateId = roommateId; // 👈 记得更新全局状态！
 }
 
 // ========== 网络邻居功能（必须在 DOMContentLoaded 外部！） ==========
@@ -1235,6 +1390,20 @@ acceptBtn.addEventListener('click', () => {
   }
 
   // ========== 桌面图标交互 ==========
+  // 页面加载后尝试恢复默认姿势
+const defaultPose = localStorage.getItem('ambiguity-gap:default-pose');
+if (defaultPose) {
+  try {
+    const data = JSON.parse(defaultPose);
+    if (data.modelId === currentRoommateId) {
+      // 恢复逻辑（同 loadPoseFromCD 中的部分）
+      // ...（可封装为 applyPoseData(data) 函数避免重复）
+    }
+  } catch (e) {
+    console.warn('默认姿势恢复失败', e);
+  }
+}
+
   // ========== 打开应用窗口（增强版：适配手机） ==========
 function openAppWindow(appId) {
   const container = document.getElementById(appId + '-window');
@@ -1894,6 +2063,47 @@ function initWindow3D() {
   loadRoommate(currentRoommateId);
 }
 
+// 在 initWindow3D() 之后调用
+function restoreLatestPoseBackup() {
+  const backup = localStorage.getItem('ambiguity-gap:latest-pose-backup');
+  if (backup) {
+    try {
+      const data = JSON.parse(backup);
+      // 如果备份的模型和当前一致，才恢复（避免错乱）
+      if (data.modelId === currentRoommateId) {
+        // 恢复相机
+        if (data.cameraPosition) {
+          cameraPosition.set(
+            data.cameraPosition.x,
+            data.cameraPosition.y,
+            data.cameraPosition.z
+          );
+          updateCameraDisplay();
+          updateCameraPosition();
+        }
+
+        // 清空旧控制
+        activeBoneControls = [];
+        document.getElementById('dynamic-sliders').innerHTML = '';
+
+        // 重建滑块
+        if (data.boneControls) {
+          data.boneControls.forEach(ctrl => {
+            addBoneControlFromSaved(ctrl.boneName, ctrl.axis, ctrl.value);
+          });
+        }
+
+        console.log('✅ 已从备份恢复姿势');
+      }
+    } catch (e) {
+      console.warn('⚠️ 备份姿势恢复失败:', e);
+    }
+  }
+}
+
+// 在 DOMContentLoaded 回调中调用
+restoreLatestPoseBackup();
+
 function loadSavedPose() {
   const saved = localStorage.getItem('ambiguity-gap:default-pose');
   if (saved) {
@@ -2293,6 +2503,10 @@ document.getElementById('add-bone-control')?.addEventListener('click', addBoneCo
 document.getElementById('pose-save-btn')?.addEventListener('click', saveFullPose);
 document.getElementById('pose-reset-btn')?.addEventListener('click', resetFullPose);
 
+// 👇 新增这一行 👇
+document.getElementById('save-named-pose-btn')?.addEventListener('click', saveNamedPoseAsCD);
+
+
 // ========== 相机控制事件绑定 ==========
 // 自动绑定所有相机控制（无论滑块还是输入框）
 ['x', 'y', 'z'].forEach(axis => {
@@ -2315,6 +2529,17 @@ document.getElementById('pose-reset-btn')?.addEventListener('click', resetFullPo
 });
 
 updateCameraDisplay();
+
+// ========== 舍友选择器初始化 ==========
+populateRoommateSelector();
+
+document.getElementById('apply-roommate-btn')?.addEventListener('click', () => {
+  const select = document.getElementById('roommate-selector');
+  const selectedId = select?.value;
+  if (selectedId && selectedId !== globalWindow.currentRoommateId) {
+    loadRoommate(selectedId); // 👈 调用你已有的函数
+  }
+});
 
 }); // End of DOMContentLoaded
 

@@ -24,6 +24,8 @@
   <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
   <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <script src="scripts/main.js" defer></script>
+  <script src="scripts/music.js" defer></script>
 </head>
 
 <!-- 我的电脑窗口 -->
@@ -349,8 +351,9 @@
     </div>
     <div class="window-content">
       <p>背景音乐会随角色 HP% 变化音量的哦。</p>
-      <button onclick="uploadBGM()">上传本地音频</button>
-      <div id="bgm-status">未设置自定义 BGM</div>
+      <button id="upload-bgm-btn">上传本地音频</button>
+      <button id="toggle-bgm-btn">⏸️/▶️</button>
+      <span id="bgm-status">⏹️ 未播放</span>
     </div>
   </div>
 </div>
@@ -475,7 +478,10 @@
 
     <div style="margin-top: 15px;">
       <button id="pose-save-btn">💾 保存为默认</button>
+      <!-- D盘窗口内 -->
+      <button id="save-named-pose-btn">💿刻录为CD并命名</button>
       <button id="pose-reset-btn">🔄 重置为 T-pose</button>
+      <button id="load-cd-btn">📀 加载一张新的CD</button>
       <!-- 新增：中文化切换 -->
       <label class="toggle-switch">
       <input type="checkbox" id="chinese-bone-names-toggle">
@@ -484,10 +490,10 @@
       </label>
       <button id="edit-mapping-btn">✏️ 你的舍友好像不一样？</button>
       <!-- 舍友选择器 -->
-      <div id="roommate-selector" style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <button class="roommate-btn active" data-id="windown">Windown</button>
-        <button class="roommate-btn" data-id="generic">通用</button>
-        <button class="roommate-btn" data-id="yinian">［意念］</button>
+      <div style="margin-top: 10px;">
+        <label><strong>更换舍友：</strong></label><br>
+        <select id="roommate-selector"></select>
+        <button id="apply-roommate-btn">🔄 应用</button>
       </div>
     </div>
   </div>
