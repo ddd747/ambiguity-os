@@ -40,14 +40,12 @@ She will do her best to help you set up so that you can:
 
 Additionally, if you have an installation key,
 you may unlock special characters later.
-
+<!-- 👇 仅触屏设备显示的提示（默认隐藏） -->
 When ready, press a key to choose:
- <!-- 👇 仅触屏设备显示的提示（默认隐藏） -->
     <p class="touch-prompt hidden">
       准备好了吗？点这里：<br>
       <button class="dos-touch-btn" data-key="c">[C] 继续</button>
-      <button class="dos-touch-btn" data-key="q">[Q] 退出</button>
-    </p>
+      <button class="dos-touch-btn" data-key="q">[Q] 退出</button></p>
 ╔══════════════════════════════════════════╗
 ║  TO                             PRESS    ║
 ╟──────────────────────────────────────────╢
@@ -92,22 +90,23 @@ When ready, press a key to choose:
     <div class="window win98">
       <div class="title-bar">🎨 桌面个性</div>
       <div class="content">
-        <p class="installer-says">有些老习惯，值得保留。</p>
-        <p>我从 Windows 98 那里学会了竖排开始菜单——它更适合专注。<br>
-           但从 Windows XP 那里借来了蓝天草地壁纸——因为它让人安心。</p>
+        <button class="btn win98-btn" onclick="goToStep('win31')">上一步</button>
+        <button class="btn win98-btn next" onclick="goToStep('xp')">下一步</button>
+        <p class="installer-says">有些回忆，值得重现。</p>
+        <p>我从 Windows 98 那里学会了竖排LOGO——它更适合显示。<br>
+           但从 Windows XP 那里借来了蓝天草地——因为它更让人安心。</p>
 
         <h4>开始菜单方向：</h4>
         <label><input type="radio" name="menu-style" value="classic" checked> 竖排（Win98 经典）</label><br>
         <label><input type="radio" name="menu-style" value="taskbar"> 横排（任务栏X菜单）</label><br><br>
 
-        <h4>壁纸主题：</h4>
+        <h4>今日天气：</h4>
         <label><input type="radio" name="wallpaper" value="bliss" checked> Bliss（蓝天草地）</label><br>
         <label><input type="radio" name="wallpaper" value="matrix"> Matrix（代码雨）</label><br>
-        <label><input type="radio" name="wallpaper" value="void"> Void（纯黑）</label><br><br>
-        <label><input type="radio" name="wallpaper" value="rainx"> 雨（out Windows）</label><br><br>
+        <label><input type="radio" name="wallpaper" value="void"> Void（阴天）</label><br>
+        <label><input type="radio" name="wallpaper" value="rainx"> 太阳雨（sun shower）</label><br>
 
-        <button class="btn win98-btn" onclick="goToStep('win31')">上一步</button>
-        <button class="btn win98-btn next" onclick="goToStep('xp')">下一步</button>
+        
       </div>
     </div>
   </div>
@@ -132,7 +131,7 @@ When ready, press a key to choose:
       <div class="content">
         <p class="installer-says">我不会偷看。除非你允许。</p>
         <label><input type="checkbox" id="allow-location"> 允许使用位置信息</label><br>
-        <label><input type="checkbox" id="allow-analytics" checked> 发送匿名数据以改进体验</label><br>
+        <label><input type="checkbox" id="allow-analytics"> 发送匿名数据以改进体验</label><br>
         <label><input type="checkbox" id="allow-network"> 允许联网功能（如多人游戏）</label><br><br>
 
         <button class="btn living-btn" onclick="goToStep('xp')">上一步</button>

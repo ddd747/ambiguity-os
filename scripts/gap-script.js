@@ -1,4 +1,5 @@
 // scripts/gap-script.js
+// ========== 歧义裂隙本体 ==========
 
 // ========== 初始化 ==========
 document.addEventListener('DOMContentLoaded', () => {

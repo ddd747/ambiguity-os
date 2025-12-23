@@ -1154,32 +1154,47 @@ function applyFilterEffect() {
   const savedWallpaper = localStorage.getItem('ambiguityos:wallpaper') || 'bliss';
   console.log('🖼️ 当前壁纸:', savedWallpaper);
 
-  // 确保 canvas 存在（双重保险）
+  // 确保 canvas 和 overlay 存在
   if (!rainCanvas) {
     rainCanvas = ensureRainCanvas();
     rainCtx = rainCanvas.getContext('2d');
   }
+  const overlay = ensureFilterOverlay();
 
-  // 处理 void 暗化层（同样动态创建）
-  const overlay = ensureFilterOverlay(); // 你已有的函数
-
-  // 隐藏所有
+  // 隐藏所有特效（重置状态）
   overlay.classList.remove('show');
-  setRainActive(false);
+  overlay.style.display = 'none';
+  setRainActive(false); // 停止 Matrix / Rainx
 
-  if (savedWallpaper === 'bliss') {
-    overlay.style.display = 'none'; 
-  } else if (savedWallpaper === 'matrix') {
-    setRainActive(true, 'matrix');
-    overlay.style.display = 'none'; 
-  } else if (savedWallpaper === 'rainx') {
-    setRainActive(true, 'rain');
-    overlay.style.display = 'none'; 
-  } else if (savedWallpaper === 'void') {
-    overlay.style.display = 'block'; // 确保不是 none
-    overlay.classList.add('show');
+  // 👇 关键：停止旧壁纸的动态效果（包括可能运行的 stormy-night）
+  if (typeof deactivateStormyNight === 'function') {
+    deactivateStormyNight();
   }
 
+  // 应用新壁纸
+  if (savedWallpaper === 'bliss') {
+    // 无特效
+  } else if (savedWallpaper === 'matrix') {
+    setRainActive(true, 'matrix');
+  } else if (savedWallpaper === 'rainx') {
+    setRainActive(true, 'rain');
+  } else if (savedWallpaper === 'void') {
+    overlay.style.display = 'block';
+    overlay.classList.add('show');
+  } 
+  // 👇 新增：暴风雨夜
+  else if (savedWallpaper === 'stormy-night') {
+    // 背景由 stormy-night.js 控制（设为黑色）
+    // 这里只需激活它
+    if (typeof activateStormyNight === 'function') {
+      activateStormyNight();
+    } else {
+      console.warn('⚠️ stormy-night.js 未加载，无法激活暴风雨夜壁纸');
+      // 回退到 void 暗色
+      overlay.style.display = 'block';
+      overlay.classList.add('show');
+    }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1611,8 +1626,10 @@ function changeWallpaper() {
   const options = [
     { name: 'Bliss（蓝天草地）', value: 'bliss' },
     { name: 'Matrix（代码雨）', value: 'matrix' },
-    { name: '雨（out Windows）', value: 'rainx' },
-    { name: 'Void（暗色）', value: 'void' }
+    { name: '太阳雨（sun shower）', value: 'rainx' },
+    { name: 'Void（暗色）', value: 'void' },
+    // 👇 新增：暴风雨夜
+    { name: '4 - 10（Dark Stormy Night in PVZ）', value: 'stormy-night' }
   ];
 
   const current = localStorage.getItem('ambiguityos:wallpaper') || 'bliss';
@@ -1627,9 +1644,9 @@ function changeWallpaper() {
 
   // 创建临时对话框（复用系统消息样式，或简单 alert 替代）
   const choice = prompt(
-    '请选择壁纸：\n' +
+    '换个天气？\n' +
     options.map((opt, i) => `${i+1}. ${opt.name}`).join('\n'),
-    '输入编号 (1-4)'
+    '你想要哪个？'
   );
 
   if (choice) {
